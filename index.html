@@ -1,0 +1,45 @@
+<html>
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.9.0/lodash.js"></script>
+    <script src="dist/swim-generator.umd.js"></script>
+  </head>
+  <body>
+    <div class='swim-generator'>
+      <h1>Swim Generator 5000</h1>
+      <div class='swim-generator--input'>
+        <input id="timeInput" type="number" value='1800' />
+        <button onclick="generate()">submit</button>
+      </div>
+      <h2 id="time" class="swim-generator--time"></h2>
+      <ul id="workout" class="swim-generator--workout"></ul>
+    </div>
+    <script>
+      var templateString = '<li><%- number %>x<%- length %> <%- type %> @ <%- formatTime(time) %></li>'
+
+      var compiledTemplate = _.template(templateString);
+
+      function formatTime(sec_num) {
+        var minutes = Math.floor(sec_num / 60);
+        var seconds = sec_num - (minutes * 60);
+
+        return _([minutes, seconds])
+          .map(function(timeUnit) { return timeUnit < 10 ? "0" + timeUnit : timeUnit; })
+          .join(':');
+      }
+
+      function generate() {
+        var timeInSeconds = document.getElementById("timeInput").value;
+
+        var workout = swimGenerator.generateWorkout(timeInSeconds);
+
+        var timeDiv = document.getElementById("time");
+        timeDiv.innerHTML = "Total Time: " + formatTime(workout.seconds);
+
+        var workoutDiv = document.getElementById("workout");
+        var workoutMarkup = _.map(workout.intervals, compiledTemplate).join(' ');
+        console.log(workoutMarkup);
+        workoutDiv.innerHTML = workoutMarkup;
+      }
+    </script>
+  </body>
+</html>
