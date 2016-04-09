@@ -255,6 +255,10 @@ function doubleIntervals(pattern) {
   });
 }
 
+function condenseWorkout(pattern) {
+  console.log(pattern);
+}
+
 function generatePattern(seconds) {
   var generatedPattern = arguments.length <= 1 || arguments[1] === undefined ? { seconds: 0, intervals: [] } : arguments[1];
 
@@ -284,7 +288,7 @@ function generateWorkout(seconds) {
 
   var pattern = generatePattern(seconds);
 
-  while (pattern.seconds < seconds / 2 && pattern.seconds > 20) {
+  while (pattern.seconds < seconds / 2 && pattern.seconds >= 20) {
     switch (_.random(1, 3)) {
       case 1:
         doubleLengths(pattern);
@@ -299,13 +303,11 @@ function generateWorkout(seconds) {
     }
   }
 
-  console.log(pattern);
-
-  while (seconds - pattern.seconds > 20) {
+  while (seconds - pattern.seconds >= 20) {
     generatePattern(seconds, pattern);
   }
 
-  console.log(pattern);
+  condenseWorkout(pattern);
 
   return pattern;
 }
