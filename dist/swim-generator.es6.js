@@ -235,9 +235,12 @@ function createSwimsFromPattern(secondsLeft, generatedPattern, selectedPattern) 
   return generatedPattern;
 }
 
+function isSameType(intervalA, intervalB) {
+  return intervalA.type === intervalB.type && intervalA.length === intervalB.length && intervalA.time === intervalB.time;
+}
+
 function doubleLengths(pattern) {
   console.log('doubleLengths');
-
   pattern.seconds *= 2;
 
   _.forEach(pattern.intervals, function (interval) {
@@ -256,7 +259,27 @@ function doubleIntervals(pattern) {
 }
 
 function condenseWorkout(pattern) {
+  pattern.intervals = pattern.intervals.reduce(function (memo, interval) {
+    var intervalsLength = memo.length;
+
+    if (intervalsLength === 0) {
+      memo.push(interval);
+      return memo;
+    }
+
+    if (isSameType(memo[intervalsLength - 1], interval)) {
+      console.log('condensing', memo[intervalsLength - 1], interval);
+      memo[intervalsLength - 1].number += interval.number;
+    } else {
+      memo.push(interval);
+    }
+
+    return memo;
+  }, []);
+
   console.log(pattern);
+
+  return pattern;
 }
 
 function generatePattern(seconds) {
@@ -307,7 +330,7 @@ function generateWorkout(seconds) {
     generatePattern(seconds, pattern);
   }
 
-  condenseWorkout(pattern);
+  pattern = condenseWorkout(pattern);
 
   return pattern;
 }
