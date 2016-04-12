@@ -15,7 +15,19 @@
     "repeat": false,
     "minTime": 400,
     "intervalSize": 4,
-    "name": "pyramid"
+    "name": "100 pyramid"
+  }, {
+    "pattern": [{ "group": "a", "interval": [2, 4] }, { "group": "b", "interval": [1, 8] }, { "group": "c", "interval": [2, 4] }],
+    "repeat": false,
+    "minTime": 480,
+    "intervalSize": 4,
+    "name": "Short 200 pyramid"
+  }, {
+    "pattern": [{ "group": "a", "interval": [6, 2] }, { "group": "b", "interval": [3, 4] }, { "group": "c", "interval": [2, 6] }, { "group": "b", "interval": [3, 4] }, { "group": "a", "interval": [6, 2] }],
+    "repeat": false,
+    "minTime": 1200,
+    "intervalSize": 12,
+    "name": "150 pyramid"
   }, {
     "pattern": [{ "group": "a", "interval": [4, 1] }, { "group": "b", "interval": [2, 2] }, { "group": "a", "interval": [4, 1] }, { "group": "c", "interval": [1, 4] }, { "group": "a", "interval": [4, 1] }, { "group": "b", "interval": [2, 2] }, { "group": "a", "interval": [4, 1] }],
     "repeat": false,
@@ -35,11 +47,29 @@
     "intervalSize": 5,
     "name": "decline"
   }, {
+    "pattern": [{ "group": "a", "interval": [1, 8] }, { "group": "b", "interval": [2, 4] }, { "group": "c", "interval": [4, 2] }],
+    "repeat": false,
+    "minTime": 480,
+    "intervalSize": 5,
+    "name": "short decline"
+  }, {
     "pattern": [{ "group": "a", "interval": [4, 4] }, { "group": "b", "interval": [4, 4] }, { "group": "a", "interval": [4, 4] }, { "group": "b", "interval": [4, 4] }],
     "repeat": false,
     "minTime": 1600,
     "intervalSize": 8,
     "name": "4x4"
+  }, {
+    "pattern": [{ "group": "a", "interval": [3, 4] }, { "group": "b", "interval": [4, 3] }, { "group": "a", "interval": [3, 4] }, { "group": "b", "interval": [4, 3] }, { "group": "a", "interval": [3, 4] }, { "group": "b", "interval": [4, 3] }],
+    "repeat": false,
+    "minTime": 1440,
+    "intervalSize": 8,
+    "name": "100's and 75's"
+  }, {
+    "pattern": [{ "group": "a", "interval": [1, 8] }, { "group": "b", "interval": [4, 2] }, { "group": "a", "interval": [1, 8] }, { "group": "b", "interval": [4, 2] }, { "group": "a", "interval": [1, 8] }, { "group": "b", "interval": [4, 2] }, { "group": "a", "interval": [1, 8] }, { "group": "b", "interval": [4, 2] }],
+    "repeat": false,
+    "minTime": 1280,
+    "intervalSize": 8,
+    "name": "200's and 50's"
   }, {
     "pattern": [{ "group": "a", "interval": [10, 4] }],
     "repeat": false,
