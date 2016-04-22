@@ -2,13 +2,26 @@
   <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.9.0/lodash.js"></script>
     <script src="dist/swim-generator.umd.js"></script>
+    <style>
+      .swim-generator--label {
+        padding-left: 1em;
+      }
+      .swim-generator--controls {
+        padding-top: 1em;
+      }
+    </style>
   </head>
   <body>
     <div class='swim-generator'>
-      <h1>Swim Generator 5000</h1>
+      <h1>Swim Generator 5500</h1>
       <div class='swim-generator--input'>
-        <input id="timeInput" type="number" value='1800' />
-        <button onclick="generate()">submit</button>
+        <div class='swim-generator--time-input'>
+          <input id="timeInput" type="number" value='30' />
+          <span class="swim-generator--time-input--label">Minutes</span>
+        </div>
+        <div class='swim-generator--controls'>
+          <button onclick="generate()">submit</button>
+        </div>
       </div>
       <h2 id="time" class="swim-generator--time"></h2>
       <ul id="workout" class="swim-generator--workout"></ul>
@@ -28,8 +41,7 @@
       }
 
       function generate() {
-        var timeInSeconds = document.getElementById("timeInput").value;
-
+        var timeInSeconds = document.getElementById("timeInput").value * 60;
         var workout = swimGenerator.generateWorkout(timeInSeconds);
 
         var timeDiv = document.getElementById("time");
