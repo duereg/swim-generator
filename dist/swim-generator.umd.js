@@ -79,7 +79,7 @@
   }];
 
   function getThingViaTimeLimit(key, secondsLeft, things) {
-    var number = arguments.length <= 3 || arguments[3] === undefined ? 1 : arguments[3];
+    var number = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 1;
 
     var filteredThings = _.filter(things, function (thing) {
       return thing[key] * number <= secondsLeft;
@@ -319,7 +319,7 @@
   }
 
   function generatePattern(seconds) {
-    var generatedPattern = arguments.length <= 1 || arguments[1] === undefined ? { seconds: 0, intervals: [] } : arguments[1];
+    var generatedPattern = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : { seconds: 0, intervals: [] };
 
     if (seconds < 20) {
       console.log('weird amount of time left: ' + seconds + '. returning generated pattern');
