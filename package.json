@@ -1,6 +1,6 @@
 {
   "name": "swim-generator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Sample project for packages built with rollup.",
   "main": "dist/swim-generator.umd.js",
   "jsnext:main": "dist/swim-generator.es6.js",
