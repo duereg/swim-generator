@@ -33,20 +33,20 @@
   ],
   "homepage": "http://blog.mattblair.co/swim-generator/",
   "devDependencies": {
-    "babel-eslint": "^8.2.3",
+    "babel-eslint": "^10.0.1",
     "babel-preset-es2015-rollup": "^3.0.0",
-    "chai": "^4.1.2",
-    "eslint": "^4.19.1",
-    "mocha": "^5.1.1",
+    "chai": "^4.2.0",
+    "eslint": "^5.12.0",
+    "mocha": "^5.2.0",
     "rollup": "^0.25.8",
     "rollup-plugin-babel": "^2.7.1",
-    "rollup-plugin-json": "^2.0.0",
+    "rollup-plugin-json": "^3.1.0",
     "rollup-plugin-multi-entry": "^1.4.0",
-    "sinon": "^4.5.0",
-    "source-map-support": "^0.5.5"
+    "sinon": "^7.2.2",
+    "source-map-support": "^0.5.10"
   },
   "dependencies": {
-    "lodash": "^4.17.10"
+    "lodash": "^4.17.11"
   },
   "engines": {
     "npm": "^5.7.1",
