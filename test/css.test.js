@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import { parseCssTimeToSeconds, formatSecondsToMmSs, generateWorkout } from '../lib/css.js';
 import workoutComponents from '../lib/workoutComponents.js';
+import { mainSetDefinitions as expectedMainSetDefinitions } from '../lib/data/mainSets.js';
 
 describe('CSS Helper Functions', () => {
     describe('parseCssTimeToSeconds', () => {
@@ -128,61 +129,80 @@ describe('generateWorkout Integration Tests', () => {
         const result = generateWorkout(totalDistance, energySystem, cssTime, workoutType);
 
         expect(selectWarmupStub.calledOnce).to.be.true;
-        expect(generateMainSetStub.calledOnce).to.be.true;
+        expect(selectWarmupStub.calledOnce).to.be.true;
+        expect(generateMainSetStub.calledOnce).to.be.true; // Keep this to ensure it's called
         expect(selectCooldownStub.calledOnce).to.be.true;
-
-        const expectedCssSeconds = parseCssTimeToSeconds(cssTime); // Use parseCssTimeToSeconds for consistency
 
         const actualArgs = generateMainSetStub.getCall(0).args;
 
-        // Simulate generateWorkout's warmup logic to get the *actual* warmup distance used by generateWorkout
-        // This is crucial because generateWorkout might override the stubbed warmup.
-        let effectiveWarmupDist;
-        const initialSelectedWarmup = { dist: 400, type: "swim" }; // From selectWarmupStub.returns in beforeEach
+        // Expected values based on test setup
+        const expectedWorkoutType_test = workoutType; // 'THRESHOLD_SUSTAINED' from test scope
+        const expectedEnergySystem_test = energySystem; // 'EN2' from test scope
+        const expectedCssSeconds_test = parseCssTimeToSeconds(cssTime); // 90 from '1:30' in test scope
 
-        if (initialSelectedWarmup && initialSelectedWarmup.dist > 0) {
+        // Simulate generateWorkout's adaptive warmup logic accurately to calculate effectiveWarmupDist_test
+        const totalDistance_test = totalDistance; // 2000 from test scope
+        const stubbedWarmupObj = { dist: 400, desc: "Mock Warmup 400yd", type: "swim" }; // As per beforeEach stub
+
+        let effectiveWarmupDist_test = stubbedWarmupObj.dist; // Start with stubbed value
+
+        // Mimic the adaptive warmup logic from generateWorkout function in lib/css.js
+        if (stubbedWarmupObj.dist > 0) {
             const minMainSetThreshold = 200;
-            let maxAllowedWarmupDist = totalDistance - minMainSetThreshold; // totalDistance = 2000
-            maxAllowedWarmupDist = Math.min(maxAllowedWarmupDist, totalDistance * 0.6); // min(1800, 1200) = 1200
-            if (maxAllowedWarmupDist < 0 && totalDistance > 0) { // Not true for this test case
-                maxAllowedWarmupDist = totalDistance * 0.4;
+            let maxAllowedWarmupDist = totalDistance_test - minMainSetThreshold; // 2000 - 200 = 1800
+            maxAllowedWarmupDist = Math.min(maxAllowedWarmupDist, totalDistance_test * 0.6); // Math.min(1800, 2000 * 0.6 = 1200) => 1200
+
+            if (maxAllowedWarmupDist < 0 && totalDistance_test > 0) { // 1200 < 0 is false
+                maxAllowedWarmupDist = totalDistance_test * 0.4;
             }
-            if (maxAllowedWarmupDist < 50 && totalDistance >= 50) { // Not true for this test case (1200 < 50 is false)
+            if (maxAllowedWarmupDist < 50 && totalDistance_test >= 50) { // 1200 < 50 is false
                 maxAllowedWarmupDist = 50;
             }
-            // Ensure maxAllowedWarmupDist is not negative if totalDistance was very small
-            if (maxAllowedWarmupDist < 0) maxAllowedWarmupDist = 0;
-
-
-            if (initialSelectedWarmup.dist > maxAllowedWarmupDist) { // 400 > 1200 is false
-                // If this were true, the stubbed warmup would be overridden.
-                // For this test, it's NOT overridden, so effectiveWarmupDist is initialSelectedWarmup.dist
-                effectiveWarmupDist = 0; // This would be the case if overridden to noWarmupOption
-                                         // but we need to know what it *would* be overridden to.
-                                         // The actual code filters `warmups` array which is not available here.
-                                         // For this test, the override path is NOT taken.
-                effectiveWarmupDist = initialSelectedWarmup.dist; // Stays as stubbed
-            } else {
-                effectiveWarmupDist = initialSelectedWarmup.dist; // Stays as stubbed
+            if (maxAllowedWarmupDist < 0) { // 1200 < 0 is false
+                maxAllowedWarmupDist = 0;
             }
-        } else {
-             effectiveWarmupDist = (initialSelectedWarmup && initialSelectedWarmup.dist === 0) ? 0 : 0; // handles noWarmupOption or null
-        }
 
-        const calculatedExpectedRemainingForMainSet = totalDistance - effectiveWarmupDist;
+            // Log intermediate calculation for maxAllowedWarmupDist
+            console.log(`DEBUG STUB TEST ('complete workout'): totalDistance_test=${totalDistance_test}, stubbedWarmupObj.dist=${stubbedWarmupObj.dist}, calculated maxAllowedWarmupDist=${maxAllowedWarmupDist}`);
+
+            if (stubbedWarmupObj.dist > maxAllowedWarmupDist) { // 400 > 1200 is false
+                // This path is NOT taken for this test's values.
+                // If it were, the warmup would be overridden, likely to 0 if no suitable shorter warmups were available.
+                console.log(`DEBUG STUB TEST ('complete workout'): Stubbed warmup dist (${stubbedWarmupObj.dist}) > maxAllowedWarmupDist (${maxAllowedWarmupDist}). Simulating override to 0.`);
+                effectiveWarmupDist_test = 0;
+            } else {
+                console.log(`DEBUG STUB TEST ('complete workout'): Stubbed warmup dist (${stubbedWarmupObj.dist}) <= maxAllowedWarmupDist (${maxAllowedWarmupDist}). Using stubbed dist.`);
+                effectiveWarmupDist_test = stubbedWarmupObj.dist; // Remains 400
+            }
+        } else if (stubbedWarmupObj.dist === 0) { // This path not taken as stubbedWarmupObj.dist is 400
+            effectiveWarmupDist_test = 0;
+        }
+        // If selectWarmupStub returned null (it doesn't per beforeEach), generateWorkout sets selectedWarmup = noWarmupOption (dist 0)
+        // So effectiveWarmupDist_test calculation covers the main paths.
+
+        const calculatedExpectedRemainingForMainSet_test = totalDistance_test - effectiveWarmupDist_test; // 2000 - 400 = 1600
 
         const testName = 'Generate Complete Workout';
-        console.log(`DEBUG TEST: ${testName} - Arg 0 WORKOUT_TYPE: Expected='${workoutType}', Actual='${actualArgs[0]}'`);
-        console.log(`DEBUG TEST: ${testName} - Arg 1 ENERGY_SYSTEM: Expected='${energySystem}', Actual='${actualArgs[1]}'`);
-        console.log(`DEBUG TEST: ${testName} - Arg 2 CSS_SECONDS: Expected='${expectedCssSeconds}', Actual='${actualArgs[2]}'`);
-        console.log(`DEBUG TEST: ${testName} - Arg 3 REMAINING_DIST: Expected='${calculatedExpectedRemainingForMainSet}', Actual='${actualArgs[3]}'`);
-        console.log(`DEBUG TEST: ${testName} - Arg 4 MAIN_SET_DEFS_TYPE: Expected='object', Actual_Type='${typeof actualArgs[4]}', IsObject=${actualArgs[4] !== null && typeof actualArgs[4] === 'object'}`);
+        console.log(`DEBUG STUB TEST (${testName}) Arg 0 WORKOUT_TYPE: Expected='${expectedWorkoutType_test}', Actual='${actualArgs[0]}'`);
+        console.log(`DEBUG STUB TEST (${testName}) Arg 1 ENERGY_SYSTEM: Expected='${expectedEnergySystem_test}', Actual='${actualArgs[1]}'`);
+        console.log(`DEBUG STUB TEST (${testName}) Arg 2 CSS_SECONDS: Expected='${expectedCssSeconds_test}', Actual='${actualArgs[2]}' (Type Expected: ${typeof expectedCssSeconds_test}, Actual: ${typeof actualArgs[2]})`);
+        console.log(`DEBUG STUB TEST (${testName}) Arg 3 REMAINING_DIST: Expected='${calculatedExpectedRemainingForMainSet_test}', Actual='${actualArgs[3]}' (EffectiveWarmupDist_test: ${effectiveWarmupDist_test}, Type Expected: ${typeof calculatedExpectedRemainingForMainSet_test}, Actual: ${typeof actualArgs[3]})`);
 
-        expect(actualArgs[0], "Argument: workoutType").to.equal(workoutType);
-        expect(actualArgs[1], "Argument: energySystem").to.equal(energySystem);
-        expect(actualArgs[2], "Argument: cssSeconds").to.equal(expectedCssSeconds);
-        expect(actualArgs[3], "Argument: remainingDistanceForMainSet").to.equal(calculatedExpectedRemainingForMainSet);
-        expect(actualArgs[4], "Argument: mainSetDefinitions").to.be.an('object');
+        // Argument 4: mainSetDefinitions (object)
+        console.log(`DEBUG STUB TEST (${testName}) Arg 4 MAIN_SET_DEFS_TYPE: Actual_Type='${typeof actualArgs[4]}', IsObject=${actualArgs[4] !== null && typeof actualArgs[4] === 'object'}`);
+        if (actualArgs[4] && typeof actualArgs[4] === 'object') {
+            console.log(`DEBUG STUB TEST (${testName}) Arg 4 Actual Keys: ${Object.keys(actualArgs[4]).sort().join(', ')}`);
+        }
+        console.log(`DEBUG STUB TEST (${testName}) Arg 4 Expected Keys: ${Object.keys(expectedMainSetDefinitions).sort().join(', ')}`);
+
+        expect(actualArgs[0], `${testName} Argument: workoutType`).to.equal(expectedWorkoutType_test);
+        expect(actualArgs[1], `${testName} Argument: energySystem`).to.equal(expectedEnergySystem_test);
+        expect(actualArgs[2], `${testName} Argument: cssSeconds`).to.equal(expectedCssSeconds_test);
+        expect(actualArgs[3], `${testName} Argument: remainingDistanceForMainSet`).to.equal(calculatedExpectedRemainingForMainSet_test);
+
+        expect(actualArgs[4], `${testName} Argument: mainSetDefinitions should be an object`).to.be.an('object');
+        expect(Object.keys(actualArgs[4]).sort(), `${testName} Argument: mainSetDefinitions should have the same keys`).to.deep.equal(Object.keys(expectedMainSetDefinitions).sort());
+
 
         expect(result).to.include("WU: Mock Warmup 400yd");
         expect(result).to.include("Main Set: Mock main set generated");
@@ -219,32 +239,54 @@ describe('generateWorkout Integration Tests', () => {
         expect(selectWarmupStub.calledOnce).to.be.true;
         expect(generateMainSetStub.calledOnce).to.be.true;
 
-        const expectedCssSeconds = parseCssTimeToSeconds(cssTime); // Use parseCssTimeToSeconds
-
         const actualArgs = generateMainSetStub.getCall(0).args;
 
-        // Simulate generateWorkout's warmup logic
-        let effectiveWarmupDist;
-        // const initialSelectedWarmup = { desc: "No warmup bitches", dist: 0, type: "none" }; // From selectWarmupStub.returns
-
-        // The adaptive logic `if (initialSelectedWarmup && initialSelectedWarmup.dist > 0)` will be false.
-        // Then `else if (!selectedWarmup || selectedWarmup.dist === 0)` in generateWorkout makes it use this 0 dist.
-        effectiveWarmupDist = 0;
-
-        const calculatedExpectedRemainingForMainSet = totalDistance - effectiveWarmupDist;
-
+        // Define expected values for this test
         const testName_noWU = 'No Warmup Scenario';
-        console.log(`DEBUG TEST: ${testName_noWU} - Arg 0 WORKOUT_TYPE: Expected='${workoutType}', Actual='${actualArgs[0]}'`);
-        console.log(`DEBUG TEST: ${testName_noWU} - Arg 1 ENERGY_SYSTEM: Expected='${energySystem}', Actual='${actualArgs[1]}'`);
-        console.log(`DEBUG TEST: ${testName_noWU} - Arg 2 CSS_SECONDS: Expected='${expectedCssSeconds}', Actual='${actualArgs[2]}'`);
-        console.log(`DEBUG TEST: ${testName_noWU} - Arg 3 REMAINING_DIST: Expected='${calculatedExpectedRemainingForMainSet}', Actual='${actualArgs[3]}'`);
-        console.log(`DEBUG TEST: ${testName_noWU} - Arg 4 MAIN_SET_DEFS_TYPE: Expected='object', Actual_Type='${typeof actualArgs[4]}', IsObject=${actualArgs[4] !== null && typeof actualArgs[4] === 'object'}`);
+        const expectedWorkoutType_noWU_test = workoutType; // 'SPEED_ENDURANCE' from test scope
+        const expectedEnergySystem_noWU_test = energySystem; // 'SP1' from test scope
+        const expectedCssSeconds_noWU_test = parseCssTimeToSeconds(cssTime); // 75 from '1:15' in test scope
 
-        expect(actualArgs[0], "Argument: workoutType").to.equal(workoutType);
-        expect(actualArgs[1], "Argument: energySystem").to.equal(energySystem);
-        expect(actualArgs[2], "Argument: cssSeconds").to.equal(expectedCssSeconds);
-        expect(actualArgs[3], "Argument: remainingDistanceForMainSet").to.equal(calculatedExpectedRemainingForMainSet);
-        expect(actualArgs[4], "Argument: mainSetDefinitions").to.be.an('object');
+        // Simulate generateWorkout's warmup logic to accurately get effectiveWarmupDist
+        // For "No warmup" scenario, selectWarmupStub returns { dist: 0 }
+        const stubbedWarmupObj_noWU = { desc: "No warmup bitches", dist: 0, type: "none" }; // As per stub
+        let effectiveWarmupDist_noWU_test = 0; // Default for no warmup
+
+        // The adaptive warmup logic in generateWorkout:
+        // if (selectedWarmup && selectedWarmup.dist > 0) { ... }
+        // else if (!selectedWarmup || selectedWarmup.dist === 0) { selectedWarmup = noWarmupOption; }
+        // Since stubbedWarmupObj_noWU.dist is 0, the first 'if' is false.
+        // The 'else if' condition `!stubbedWarmupObj_noWU || stubbedWarmupObj_noWU.dist === 0` is true.
+        // So, generateWorkout uses a warmup with dist 0.
+        // Thus, effectiveWarmupDist_noWU_test remains 0.
+
+        const calculatedExpectedRemainingForMainSet_noWU_test = totalDistance - effectiveWarmupDist_noWU_test; // totalDistance is 1000
+
+        // Argument 0: workoutType (string)
+        console.log(`ADVANCED DEBUG (${testName_noWU}) Arg 0 WORKOUT_TYPE: Expected='${expectedWorkoutType_noWU_test}', Actual='${actualArgs[0]}'`);
+        expect(actualArgs[0], `${testName_noWU} Arg 0 (workoutType)`).to.equal(expectedWorkoutType_noWU_test);
+
+        // Argument 1: energySystem (string)
+        console.log(`ADVANCED DEBUG (${testName_noWU}) Arg 1 ENERGY_SYSTEM: Expected='${expectedEnergySystem_noWU_test}', Actual='${actualArgs[1]}'`);
+        expect(actualArgs[1], `${testName_noWU} Arg 1 (energySystem)`).to.equal(expectedEnergySystem_noWU_test);
+
+        // Argument 2: cssSeconds (number)
+        console.log(`ADVANCED DEBUG (${testName_noWU}) Arg 2 CSS_SECONDS: Expected='${expectedCssSeconds_noWU_test}', Actual='${actualArgs[2]}' (Type Expected: ${typeof expectedCssSeconds_noWU_test}, Actual: ${typeof actualArgs[2]})`);
+        expect(actualArgs[2], `${testName_noWU} Arg 2 (cssSeconds)`).to.equal(expectedCssSeconds_noWU_test);
+
+        // Argument 3: remainingDistanceForMainSet (number)
+        console.log(`ADVANCED DEBUG (${testName_noWU}) Arg 3 REMAINING_DIST: Expected='${calculatedExpectedRemainingForMainSet_noWU_test}', Actual='${actualArgs[3]}' (Type Expected: ${typeof calculatedExpectedRemainingForMainSet_noWU_test}, Actual: ${typeof actualArgs[3]})`);
+        expect(actualArgs[3], `${testName_noWU} Arg 3 (remainingDistance)`).to.equal(calculatedExpectedRemainingForMainSet_noWU_test);
+
+        // Argument 4: mainSetDefinitions (object)
+        console.log(`ADVANCED DEBUG (${testName_noWU}) Arg 4 MAIN_SET_DEFS_TYPE: Actual_Type='${typeof actualArgs[4]}', IsObject=${actualArgs[4] !== null && typeof actualArgs[4] === 'object'}`);
+        if (actualArgs[4] && typeof actualArgs[4] === 'object') {
+            console.log(`ADVANCED DEBUG (${testName_noWU}) Arg 4 Actual Keys: ${Object.keys(actualArgs[4]).sort().join(', ')}`);
+        }
+        console.log(`ADVANCED DEBUG (${testName_noWU}) Arg 4 Expected Keys: ${Object.keys(expectedMainSetDefinitions).sort().join(', ')}`);
+
+        expect(actualArgs[4], `${testName_noWU} Arg 4 (mainSetDefinitions) should be an object`).to.be.an('object');
+        expect(Object.keys(actualArgs[4]).sort(), `${testName_noWU} Arg 4 (mainSetDefinitions) should have the same keys`).to.deep.equal(Object.keys(expectedMainSetDefinitions).sort());
 
         expect(selectCooldownStub.calledOnce).to.be.true;
 
