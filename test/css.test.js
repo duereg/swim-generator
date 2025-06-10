@@ -249,7 +249,7 @@ describe('generateWorkout Integration Tests', () => {
 
         // Simulate generateWorkout's warmup logic to accurately get effectiveWarmupDist
         // For "No warmup" scenario, selectWarmupStub returns { dist: 0 }
-        const stubbedWarmupObj_noWU = { desc: "No warmup bitches", dist: 0, type: "none" }; // As per stub
+       // const stubbedWarmupObj_noWU = { desc: "No warmup bitches", dist: 0, type: "none" }; // As per stub
         let effectiveWarmupDist_noWU_test = 0; // Default for no warmup
 
         // The adaptive warmup logic in generateWorkout:
