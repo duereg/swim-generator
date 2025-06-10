@@ -1,0 +1,35 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ master ] # Changed from main to master
+  workflow_dispatch:
+
+jobs:
+  deploy: # Renamed job from publish to deploy for clarity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16' # Specify Node.js version, adjust as needed
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build # Assuming 'npm run build' creates a 'dist' or 'build' folder
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist # Or ./build, depending on your project's output directory
+          # Optional: specify a custom domain
+          # cname: example.com
+          # Optional: if your project is in a subdirectory
+          # publish_branch: gh-pages
+          # user_name: 'github-actions[bot]'
+          # user_email: 'github-actions[bot]@users.noreply.github.com'
