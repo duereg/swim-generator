@@ -467,6 +467,50 @@ var patterns = [
 	}
 ];
 
+function _defineProperty(e, r, t) {
+  return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
+    value: t,
+    enumerable: true,
+    configurable: true,
+    writable: true
+  }) : e[r] = t, e;
+}
+function ownKeys(e, r) {
+  var t = Object.keys(e);
+  if (Object.getOwnPropertySymbols) {
+    var o = Object.getOwnPropertySymbols(e);
+    r && (o = o.filter(function (r) {
+      return Object.getOwnPropertyDescriptor(e, r).enumerable;
+    })), t.push.apply(t, o);
+  }
+  return t;
+}
+function _objectSpread2(e) {
+  for (var r = 1; r < arguments.length; r++) {
+    var t = null != arguments[r] ? arguments[r] : {};
+    r % 2 ? ownKeys(Object(t), true).forEach(function (r) {
+      _defineProperty(e, r, t[r]);
+    }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) {
+      Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r));
+    });
+  }
+  return e;
+}
+function _toPrimitive(t, r) {
+  if ("object" != typeof t || !t) return t;
+  var e = t[Symbol.toPrimitive];
+  if (void 0 !== e) {
+    var i = e.call(t, r);
+    if ("object" != typeof i) return i;
+    throw new TypeError("@@toPrimitive must return a primitive value.");
+  }
+  return ("string" === r ? String : Number)(t);
+}
+function _toPropertyKey(t) {
+  var i = _toPrimitive(t, "string");
+  return "symbol" == typeof i ? i : i + "";
+}
+
 // Warmup options based on various sources [2, 5, 7, 8, 11, 13, 15, 17, 19, 20]
 var warmups = [{
   desc: "200 no fins, 200 w fins swim",
@@ -592,28 +636,102 @@ var en2Distances = [100, 200, 300, 400];
 var en3Distances = [50, 100, 150, 200];
 var en3SecondaryDistances = [200, 300, 400];
 var sp1Distances = [25, 50, 75, 100];
-var sp1Drills = ["swim", "kb", "FU", "HUHO"];
+var sp1Drills = ["swim", "kb", "FU", "HUHO"]; // FU = Fast Underwater, HUHO = Hypoxic Hips Out
 var sp2Distances = [25, 50];
-var sp2RepsMapping = {
-  25: 24,
-  50: 16
-};
+// const sp2RepsMapping = { 25: 24, 50: 16 }; // Keep commented out as per previous fixes
 
 // Functions now keyed by workoutType, but still accept energySystem for potential future differentiation
 var mainSetDefinitions = {
   'ENDURANCE_BASE': function ENDURANCE_BASE(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
-    // Was EN1
     var sets = [];
     var mainSetTotalDist = 0;
     var targetPacePer100 = cssSecondsPer100 + Math.random() * 5;
-    var numEn1Reps = Math.floor(Math.random() * (6 - 3 + 1)) + 3;
-    var en1RepDist = en1Distances[Math.floor(Math.random() * en1Distances.length)];
-    if (numEn1Reps * en1RepDist > remainingDistanceForMainSet * 1.2) {
-      numEn1Reps = Math.floor(remainingDistanceForMainSet * 1.2 / en1RepDist) || 1;
+    if (remainingDistanceForMainSet < 25) {
+      return {
+        sets: sets,
+        mainSetTotalDist: 0,
+        targetPacePer100: targetPacePer100,
+        descriptiveMessage: "Endurance Base (".concat(energySystem, ") set - too short.")
+      };
     }
-    var en1Rest = "r".concat(Math.floor(Math.random() * (60 - 30 + 1)) + 30, "\"");
-    sets.push("".concat(numEn1Reps, "x").concat(en1RepDist, " ").concat(energySystem, " focus swim/kick ").concat(en1Rest)); // Added energySystem to set desc for now
-    mainSetTotalDist += numEn1Reps * en1RepDist;
+    var en1RepDist = 0;
+    var numEn1Reps = 0;
+    if (remainingDistanceForMainSet < 200) {
+      // Path for 25-199 yards
+      var shortEn1Dists = [150, 125, 100, 75, 50, 25]; // Largest to smallest
+      for (var _i = 0, _shortEn1Dists = shortEn1Dists; _i < _shortEn1Dists.length; _i++) {
+        var dist = _shortEn1Dists[_i];
+        if (remainingDistanceForMainSet >= dist) {
+          en1RepDist = dist;
+          numEn1Reps = Math.floor(remainingDistanceForMainSet / en1RepDist);
+          break; // Found the largest fitting repDist from short list
+        }
+      }
+    } else if (remainingDistanceForMainSet <= 600) {
+      // Path for 200-600 yards
+      var midEn1Dists = [300, 250, 200, 150, 100, 75, 50]; // Ordered to try larger ones first
+      var bestCurrentRepDist = 0;
+      var bestCurrentNumReps = 0;
+      var smallestRemainderSoFar = Infinity;
+      for (var _i2 = 0, _midEn1Dists = midEn1Dists; _i2 < _midEn1Dists.length; _i2++) {
+        var _dist = _midEn1Dists[_i2];
+        if (remainingDistanceForMainSet >= _dist) {
+          var currentNumReps = Math.floor(remainingDistanceForMainSet / _dist);
+          // Apply a cap on reps for this mid-range to avoid too many short reps
+          var maxRepsForDist = 5; // Default cap
+          if (_dist >= 200) maxRepsForDist = 3;else if (_dist >= 150) maxRepsForDist = 4;
+          currentNumReps = Math.min(currentNumReps, maxRepsForDist);
+          if (currentNumReps === 0) continue;
+          var currentRemainder = remainingDistanceForMainSet - currentNumReps * _dist;
+          if (currentRemainder < smallestRemainderSoFar) {
+            smallestRemainderSoFar = currentRemainder;
+            bestCurrentRepDist = _dist;
+            bestCurrentNumReps = currentNumReps;
+          } else if (currentRemainder === smallestRemainderSoFar) {
+            if (_dist > bestCurrentRepDist) {
+              // Prefer larger repDist if remainder is same
+              bestCurrentRepDist = _dist;
+              bestCurrentNumReps = currentNumReps;
+            }
+          }
+        }
+      }
+      en1RepDist = bestCurrentRepDist;
+      numEn1Reps = bestCurrentNumReps;
+    } else {
+      // Path for > 600 yards
+      var selectedDist = en1Distances[Math.floor(Math.random() * en1Distances.length)]; // [200,300,400,500]
+      if (selectedDist > remainingDistanceForMainSet) {
+        // Should be rare if remaining > 600
+        for (var j = en1Distances.length - 1; j >= 0; j--) {
+          if (en1Distances[j] <= remainingDistanceForMainSet) {
+            selectedDist = en1Distances[j];
+            break;
+          }
+        }
+      }
+      en1RepDist = selectedDist;
+      if (en1RepDist > 0) {
+        numEn1Reps = Math.floor(remainingDistanceForMainSet / en1RepDist);
+        numEn1Reps = Math.min(numEn1Reps, 15); // Cap for standard long distances
+      }
+    }
+    if (numEn1Reps > 0 && en1RepDist > 0) {
+      // Final check to prevent exceeding (should be redundant due to Math.floor)
+      if (numEn1Reps * en1RepDist > remainingDistanceForMainSet) {
+        numEn1Reps = Math.floor(remainingDistanceForMainSet / en1RepDist);
+      }
+      if (numEn1Reps > 0) {
+        // Check again after potential adjustment
+        var en1Rest = "r".concat(Math.floor(Math.random() * (60 - 30 + 1)) + 30, "\"");
+        sets.push("".concat(numEn1Reps, "x").concat(en1RepDist, " ").concat(energySystem, " focus swim/kick ").concat(en1Rest));
+        mainSetTotalDist = numEn1Reps * en1RepDist;
+      } else {
+        mainSetTotalDist = 0;
+      }
+    } else {
+      mainSetTotalDist = 0;
+    }
     return {
       sets: sets,
       mainSetTotalDist: mainSetTotalDist,
@@ -622,18 +740,53 @@ var mainSetDefinitions = {
     };
   },
   'THRESHOLD_SUSTAINED': function THRESHOLD_SUSTAINED(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
-    // Was EN2
     var sets = [];
     var mainSetTotalDist = 0;
     var targetPacePer100 = cssSecondsPer100 + (Math.random() * 3 - 1.5);
-    var numEn2Reps = Math.floor(Math.random() * (10 - 4 + 1)) + 4;
-    var en2RepDist = en2Distances[Math.floor(Math.random() * en2Distances.length)];
-    if (numEn2Reps * en2RepDist > remainingDistanceForMainSet * 1.2) {
-      numEn2Reps = Math.floor(remainingDistanceForMainSet * 1.2 / en2RepDist) || 1;
+    if (remainingDistanceForMainSet < 25) {
+      return {
+        sets: sets,
+        mainSetTotalDist: 0,
+        targetPacePer100: targetPacePer100,
+        descriptiveMessage: "Threshold Sustained (".concat(energySystem, ") set - too short.")
+      };
     }
-    var en2Rest = "r".concat(Math.floor(Math.random() * (30 - 20 + 1)) + 20, "\"");
-    sets.push("".concat(numEn2Reps, "x").concat(en2RepDist, " ").concat(energySystem, " focus swim ").concat(en2Rest));
-    mainSetTotalDist += numEn2Reps * en2RepDist;
+    var en2RepDist = en2Distances[Math.floor(Math.random() * en2Distances.length)];
+    if (remainingDistanceForMainSet < en2RepDist) {
+      var possibleDists = en2Distances.filter(function (d) {
+        return d <= remainingDistanceForMainSet;
+      });
+      if (possibleDists.length > 0) {
+        en2RepDist = possibleDists[possibleDists.length - 1];
+      } else {
+        if (remainingDistanceForMainSet >= 50) {
+          en2RepDist = Math.floor(remainingDistanceForMainSet / 50) * 50;
+          if (en2RepDist === 0) en2RepDist = 50;
+        } else if (remainingDistanceForMainSet >= 25) {
+          en2RepDist = 25;
+        } else {
+          return {
+            sets: sets,
+            mainSetTotalDist: 0,
+            targetPacePer100: targetPacePer100,
+            descriptiveMessage: "Threshold Sustained (".concat(energySystem, ") set - too short.")
+          };
+        }
+      }
+    }
+    var numEn2Reps = en2RepDist > 0 ? Math.floor(remainingDistanceForMainSet / en2RepDist) : 0;
+    numEn2Reps = Math.min(numEn2Reps, 25); // Changed cap from 20 to 25
+    numEn2Reps = Math.max(numEn2Reps, 1);
+    if (numEn2Reps * en2RepDist > remainingDistanceForMainSet) {
+      numEn2Reps = 0;
+    }
+    if (numEn2Reps > 0) {
+      var en2Rest = "r".concat(Math.floor(Math.random() * (30 - 20 + 1)) + 20, "\"");
+      sets.push("".concat(numEn2Reps, "x").concat(en2RepDist, " ").concat(energySystem, " focus swim ").concat(en2Rest));
+      mainSetTotalDist = numEn2Reps * en2RepDist;
+    } else {
+      mainSetTotalDist = 0;
+    }
     return {
       sets: sets,
       mainSetTotalDist: mainSetTotalDist,
@@ -642,29 +795,74 @@ var mainSetDefinitions = {
     };
   },
   'THRESHOLD_DEVELOPMENT': function THRESHOLD_DEVELOPMENT(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
-    // Was EN3
     var sets = [];
     var mainSetTotalDist = 0;
     var targetPacePer100 = cssSecondsPer100 - Math.random() * 3;
-    var numEn3Reps = Math.floor(Math.random() * (5 - 2 + 1)) + 2;
-    var en3RepDist = en3Distances[Math.floor(Math.random() * en3Distances.length)];
-    if (numEn3Reps * en3RepDist > remainingDistanceForMainSet * 0.8 && remainingDistanceForMainSet > 800) {
-      numEn3Reps = Math.floor(remainingDistanceForMainSet * 0.7 / en3RepDist) || 1;
-    } else if (numEn3Reps * en3RepDist > remainingDistanceForMainSet * 1.1) {
-      numEn3Reps = Math.floor(remainingDistanceForMainSet * 1.1 / en3RepDist) || 1;
-    }
     var en3Rest = "r".concat(Math.floor(Math.random() * (90 - 40 + 1)) + 40, "\"");
-    sets.push("".concat(numEn3Reps, "x").concat(en3RepDist, " ").concat(energySystem, " focus swim/kb ").concat(en3Rest));
-    mainSetTotalDist += numEn3Reps * en3RepDist;
-    if (remainingDistanceForMainSet - mainSetTotalDist > 500 && Math.random() < 0.5) {
-      var secondaryReps = Math.floor(Math.random() * (4 - 2 + 1)) + 2;
-      var secondaryDist = en3SecondaryDistances[Math.floor(Math.random() * en3SecondaryDistances.length)];
-      if (secondaryReps * secondaryDist > (remainingDistanceForMainSet - mainSetTotalDist) * 1.1) {
-        secondaryReps = Math.floor((remainingDistanceForMainSet - mainSetTotalDist) * 1.1 / secondaryDist) || 1;
+    if (remainingDistanceForMainSet < 50) {
+      // Minimum for EN3 is typically 50
+      return {
+        sets: sets,
+        mainSetTotalDist: 0,
+        targetPacePer100: targetPacePer100,
+        descriptiveMessage: "Threshold Development (".concat(energySystem, ") set - too short.")
+      };
+    }
+    var en3RepDist = en3Distances[Math.floor(Math.random() * en3Distances.length)];
+    if (remainingDistanceForMainSet < en3RepDist) {
+      var possibleDists = en3Distances.filter(function (d) {
+        return d <= remainingDistanceForMainSet;
+      });
+      if (possibleDists.length > 0) {
+        en3RepDist = possibleDists[possibleDists.length - 1];
+      } else {
+        // Should not happen if remainingDistanceForMainSet >= 50 and en3Distances includes 50
+        en3RepDist = 0; // will result in numEn3Reps = 0
       }
+    }
+    var numEn3Reps = en3RepDist > 0 ? Math.floor(remainingDistanceForMainSet / en3RepDist) : 0;
+    numEn3Reps = Math.min(numEn3Reps, 20);
+    // No Math.max(numEn3Reps, 0) needed as floor will be >=0. If en3RepDist is 0, numEn3Reps is 0.
+
+    if (numEn3Reps > 0) {
+      sets.push("".concat(numEn3Reps, "x").concat(en3RepDist, " ").concat(energySystem, " focus swim/kb ").concat(en3Rest));
+      mainSetTotalDist = numEn3Reps * en3RepDist;
+    }
+    var newRemainingDistance = remainingDistanceForMainSet - mainSetTotalDist;
+    if (newRemainingDistance > 400) {
+      var secondaryDist = en3SecondaryDistances[Math.floor(Math.random() * en3SecondaryDistances.length)];
+      if (newRemainingDistance < secondaryDist) {
+        // try to pick a smaller secondary dist
+        var possibleSecDists = en3SecondaryDistances.filter(function (d) {
+          return d <= newRemainingDistance;
+        });
+        if (possibleSecDists.length > 0) {
+          secondaryDist = possibleSecDists[possibleSecDists.length - 1];
+        } else {
+          secondaryDist = 0; // Cannot fit any secondary
+        }
+      }
+      var secondaryReps = 0;
+      if (secondaryDist > 0) {
+        secondaryReps = Math.floor(newRemainingDistance / secondaryDist);
+      }
+      secondaryReps = Math.min(secondaryReps, 10);
       if (secondaryReps > 0) {
         sets.push("".concat(secondaryReps, "x").concat(secondaryDist, " ").concat(energySystem, " focus swim ").concat(en3Rest));
         mainSetTotalDist += secondaryReps * secondaryDist;
+      }
+    }
+    if (mainSetTotalDist === 0 && remainingDistanceForMainSet >= 50) {
+      var fallbackDist = en3Distances[0]; // Smallest standard EN3 distance (50)
+      if (remainingDistanceForMainSet < fallbackDist) fallbackDist = 0; // Should not happen if initial check is >=50
+
+      if (fallbackDist > 0) {
+        var fallbackReps = Math.floor(remainingDistanceForMainSet / fallbackDist);
+        fallbackReps = Math.min(fallbackReps, 5); // Cap fallback reps
+        if (fallbackReps > 0) {
+          sets.push("".concat(fallbackReps, "x").concat(fallbackDist, " ").concat(energySystem, " focus swim ").concat(en3Rest));
+          mainSetTotalDist = fallbackReps * fallbackDist;
+        }
       }
     }
     return {
@@ -675,43 +873,123 @@ var mainSetDefinitions = {
     };
   },
   'SPEED_ENDURANCE': function SPEED_ENDURANCE(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
-    // Was SP1
     var sets = [];
     var mainSetTotalDist = 0;
     var targetPacePer100 = cssSecondsPer100 - (5 + Math.random() * 5);
-    var numBlocks = Math.floor(Math.random() * (3 - 1 + 1)) + 1;
-    var blockDistRemaining = remainingDistanceForMainSet;
+    if (remainingDistanceForMainSet < sp1Distances[0]) {
+      // sp1Distances[0] is typically 25
+      return {
+        sets: sets,
+        mainSetTotalDist: 0,
+        targetPacePer100: targetPacePer100,
+        descriptiveMessage: "Speed Endurance (".concat(energySystem, ") set - too short.")
+      };
+    }
+    var numBlocks;
+    if (remainingDistanceForMainSet < 600) numBlocks = 1;else if (remainingDistanceForMainSet < 1200) numBlocks = 2;else numBlocks = 3;
+    var blockDistRemainingForReps = remainingDistanceForMainSet;
+    var accumulatedDist = 0;
     for (var i = 0; i < numBlocks; i++) {
-      var numReps = Math.floor(Math.random() * (8 - 4 + 1)) + 4;
-      var repDist = sp1Distances[Math.floor(Math.random() * sp1Distances.length)];
-      var maxDistForBlock = blockDistRemaining / (numBlocks - i);
-      if (numReps * repDist > maxDistForBlock * 1.2) {
-        numReps = Math.floor(maxDistForBlock * 1.2 / repDist) || 1;
-      }
-      if (numReps === 0 && mainSetTotalDist === 0) numReps = 1;
-      if (numReps > 0) {
-        var rest = "r".concat(Math.floor(Math.random() * (40 - 30 + 1)) + 30, "\"");
-        var drillType = sp1Drills[Math.floor(Math.random() * sp1Drills.length)];
-        sets.push("".concat(numReps, "x").concat(repDist, " ").concat(drillType, " (").concat(energySystem, " focus) ").concat(rest));
-        var currentBlockDist = numReps * repDist;
-        mainSetTotalDist += currentBlockDist;
-        blockDistRemaining -= currentBlockDist;
-        if (i < numBlocks - 1 && blockDistRemaining > 50) {
-          var easyBreak = Math.random() > 0.5 ? "2min rest" : "50 ez + wait for top";
-          sets.push(easyBreak);
-          if (easyBreak.includes("ez")) {
-            mainSetTotalDist += 50;
-            blockDistRemaining -= 50;
+      if (blockDistRemainingForReps < sp1Distances[0]) break;
+      var targetDistForCurrentBlock = Math.floor(blockDistRemainingForReps / (numBlocks - i));
+      var easyBreakDist = 0;
+      var addEasyBreakString = false;
+      if (i < numBlocks - 1 && blockDistRemainingForReps - targetDistForCurrentBlock > 100) {
+        // Check if there's room for break AND next block
+        if (Math.random() > 0.5) {
+          if (targetDistForCurrentBlock > 150 && blockDistRemainingForReps - (targetDistForCurrentBlock - 50) >= 50) {
+            // Ensure rep part & overall remaining is substantial
+            easyBreakDist = 50;
+            targetDistForCurrentBlock -= easyBreakDist;
+            addEasyBreakString = true;
           }
         }
       }
+      if (targetDistForCurrentBlock < sp1Distances[0] && addEasyBreakString) {
+        targetDistForCurrentBlock += easyBreakDist; // Reclaim break dist
+        easyBreakDist = 0;
+        addEasyBreakString = false;
+      }
+      if (targetDistForCurrentBlock < sp1Distances[0]) continue;
+      var repDist = sp1Distances[Math.floor(Math.random() * sp1Distances.length)];
+      if (repDist > targetDistForCurrentBlock && targetDistForCurrentBlock >= sp1Distances[0]) {
+        for (var j = sp1Distances.length - 1; j >= 0; j--) {
+          if (sp1Distances[j] <= targetDistForCurrentBlock) {
+            repDist = sp1Distances[j];
+            break;
+          }
+        }
+        if (repDist > targetDistForCurrentBlock && sp1Distances.length > 0 && sp1Distances[0] <= targetDistForCurrentBlock) {
+          repDist = sp1Distances[0];
+        } else if (repDist > targetDistForCurrentBlock) {
+          // Target too small even for smallest sp1Distance
+          continue;
+        }
+      } else if (repDist > targetDistForCurrentBlock) {
+        // Initial random was too large, and target is smaller than smallest
+        continue;
+      }
+      if (repDist === 0 && sp1Distances.length > 0) repDist = sp1Distances[0];
+      if (repDist === 0) continue; // Should not happen if sp1Distances is not empty
+
+      var numReps = repDist > 0 ? Math.floor(targetDistForCurrentBlock / repDist) : 0;
+      numReps = Math.min(numReps, 10); // Changed cap from 12 to 10
+
+      if (numReps > 0) {
+        var currentBlockActualRepDist = numReps * repDist;
+        var rest = "r".concat(Math.floor(Math.random() * (40 - 30 + 1)) + 30, "\"");
+        var drillType = sp1Drills[Math.floor(Math.random() * sp1Drills.length)];
+        sets.push("".concat(numReps, "x").concat(repDist, " ").concat(drillType, " (").concat(energySystem, " focus) ").concat(rest));
+        accumulatedDist += currentBlockActualRepDist;
+        blockDistRemainingForReps -= currentBlockActualRepDist;
+        if (addEasyBreakString && easyBreakDist > 0) {
+          if (blockDistRemainingForReps >= easyBreakDist) {
+            sets.push("50 ez + wait for top");
+            accumulatedDist += easyBreakDist;
+            blockDistRemainingForReps -= easyBreakDist;
+          }
+        } else if (i < numBlocks - 1 && blockDistRemainingForReps > sp1Distances[0]) {
+          if (Math.random() > 0.3) sets.push("2min rest");
+        }
+      } else if (easyBreakDist > 0) {
+        if (blockDistRemainingForReps >= easyBreakDist) {
+          sets.push("".concat(easyBreakDist, " ez swim"));
+          accumulatedDist += easyBreakDist;
+          blockDistRemainingForReps -= easyBreakDist;
+        }
+      }
     }
-    if (sets.length === 0) {
-      var _repDist = sp1Distances[1];
-      var _numReps = Math.floor(remainingDistanceForMainSet / _repDist / 2) || 2;
-      if (_numReps * _repDist > remainingDistanceForMainSet) _numReps = Math.floor(remainingDistanceForMainSet / _repDist) || 1;
-      sets.push("".concat(_numReps, "x").concat(_repDist, " swim (").concat(energySystem, " focus) r30\""));
-      mainSetTotalDist = _numReps * _repDist;
+    mainSetTotalDist = accumulatedDist;
+    if (mainSetTotalDist < remainingDistanceForMainSet * 0.75 && remainingDistanceForMainSet > 200) {
+      sets.length = 0;
+      mainSetTotalDist = 0; // Reset for fallback calculation
+      var fallbackRepDist = remainingDistanceForMainSet > 400 && sp1Distances.includes(100) ? 100 : sp1Distances[1];
+      if (remainingDistanceForMainSet < fallbackRepDist && sp1Distances.length > 0) fallbackRepDist = sp1Distances[0];
+      if (fallbackRepDist > 0) {
+        var fallbackNumReps = Math.floor(remainingDistanceForMainSet / fallbackRepDist);
+        fallbackNumReps = Math.min(fallbackNumReps, 16);
+        if (fallbackNumReps > 0) {
+          sets.push("".concat(fallbackNumReps, "x").concat(fallbackRepDist, " swim (").concat(energySystem, " focus) r30\""));
+          mainSetTotalDist = fallbackNumReps * fallbackRepDist;
+        }
+      }
+    }
+    if (mainSetTotalDist === 0 && remainingDistanceForMainSet >= sp1Distances[0]) {
+      var fDist = remainingDistanceForMainSet >= 50 && sp1Distances.includes(50) ? 50 : sp1Distances[0];
+      if (remainingDistanceForMainSet < fDist) {
+        return {
+          sets: sets,
+          mainSetTotalDist: 0,
+          targetPacePer100: targetPacePer100,
+          descriptiveMessage: "Speed Endurance (".concat(energySystem, ") set - too short for fallback.")
+        };
+      }
+      var fReps = Math.floor(remainingDistanceForMainSet / fDist);
+      fReps = Math.min(fReps, fDist === 50 ? 8 : 12);
+      if (fReps > 0) {
+        sets.push("".concat(fReps, "x").concat(fDist, " swim (").concat(energySystem, " focus) r30\""));
+        mainSetTotalDist = fReps * fDist;
+      }
     }
     return {
       sets: sets,
@@ -721,21 +999,64 @@ var mainSetDefinitions = {
     };
   },
   'MAX_SPRINT': function MAX_SPRINT(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
-    // Was SP2
     var sets = [];
     var mainSetTotalDist = 0;
     var targetPacePer100 = cssSecondsPer100 - (10 + Math.random() * 15);
-    var repDist = sp2Distances[Math.floor(Math.random() * sp2Distances.length)];
-    var numReps = sp2RepsMapping[repDist] || 10;
-    if (numReps * repDist > remainingDistanceForMainSet * 0.9) {
-      numReps = Math.floor(remainingDistanceForMainSet * 0.9 / repDist);
+    var numReps = 0;
+    var repDist = 0;
+    var has50 = sp2Distances.includes(50);
+    var has25 = sp2Distances.includes(25);
+    if (remainingDistanceForMainSet < (has25 ? 25 : has50 ? 50 : Infinity)) {
+      return {
+        sets: sets,
+        mainSetTotalDist: 0,
+        targetPacePer100: targetPacePer100,
+        descriptiveMessage: "Max Sprint (".concat(energySystem, ") set - too short.")
+      };
     }
-    if (numReps < 8 && repDist === 50) numReps = 8;
-    if (numReps < 12 && repDist === 25) numReps = 12;
-    if (numReps === 0) numReps = 1;
-    var sp2Rest = "1'r";
-    sets.push("".concat(numReps, "x").concat(repDist, " UW sprint (").concat(energySystem, " focus, breath at wall) @ ").concat(sp2Rest));
-    mainSetTotalDist += numReps * repDist;
+    var initialRepDist;
+    if (has50 && remainingDistanceForMainSet >= 750) {
+      initialRepDist = 50;
+    } else if (has25) {
+      initialRepDist = 25;
+    } else if (has50) {
+      initialRepDist = 50;
+    } else {
+      return {
+        sets: sets,
+        mainSetTotalDist: 0,
+        targetPacePer100: targetPacePer100,
+        descriptiveMessage: "Max Sprint (".concat(energySystem, ") set - no valid distances.")
+      };
+    }
+    var initialAbsoluteMaxReps = initialRepDist === 50 ? 24 : 32; // Changed from 30:40
+    var numRepsForInitialDist = 0;
+    if (initialRepDist > 0) {
+      numRepsForInitialDist = Math.min(Math.floor(remainingDistanceForMainSet / initialRepDist), initialAbsoluteMaxReps);
+    }
+    var currentCalcDist = numRepsForInitialDist * initialRepDist;
+    repDist = initialRepDist;
+    numReps = numRepsForInitialDist;
+    if (initialRepDist === 25 && has50) {
+      var potentialReps50 = Math.min(Math.floor(remainingDistanceForMainSet / 50), 24); // Changed cap from 30 to 24
+      var potentialDist50 = potentialReps50 * 50;
+      var isSignificantUndershootWith25s = currentCalcDist < remainingDistanceForMainSet * 0.85;
+      if (isSignificantUndershootWith25s && potentialDist50 > currentCalcDist) {
+        repDist = 50;
+        numReps = potentialReps50;
+      }
+    }
+    if (numReps === 0 && repDist > 0 && remainingDistanceForMainSet >= repDist) {
+      numReps = 1;
+    }
+    if (numReps > 0 && repDist > 0) {
+      mainSetTotalDist = numReps * repDist;
+      var sp2Rest = "1'r";
+      sets.push("".concat(numReps, "x").concat(repDist, " UW sprint (").concat(energySystem, " focus, breath at wall) @ ").concat(sp2Rest));
+    } else {
+      mainSetTotalDist = 0;
+      sets = [];
+    }
     return {
       sets: sets,
       mainSetTotalDist: mainSetTotalDist,
@@ -744,24 +1065,76 @@ var mainSetDefinitions = {
     };
   },
   'GENERAL_ENDURANCE': function GENERAL_ENDURANCE(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
-    // Was DEFAULT
     var sets = [];
     var mainSetTotalDist = 0;
     var targetPacePer100 = cssSecondsPer100;
-    var numReps = Math.floor(remainingDistanceForMainSet / 400);
-    if (numReps === 0 && remainingDistanceForMainSet > 200) numReps = 1;else if (numReps === 0) {
-      numReps = Math.floor(remainingDistanceForMainSet / 200) || 1;
-      sets.push("".concat(numReps, "x200 swim (").concat(energySystem, " focus) r30\""));
-      mainSetTotalDist += numReps * 200;
+    var generalDistances = [400, 300, 200, 100, 50];
+    var bestRepDist = 0;
+    var bestNumReps = 0;
+    var smallestRemainder = Infinity;
+    if (remainingDistanceForMainSet < 25) {
+      // Smallest possible rep distance
       return {
         sets: sets,
-        mainSetTotalDist: mainSetTotalDist,
+        mainSetTotalDist: 0,
         targetPacePer100: targetPacePer100,
-        descriptiveMessage: "General Endurance (".concat(energySystem, ") default set.")
+        descriptiveMessage: "General Endurance (".concat(energySystem, ") set - too short.")
       };
     }
-    sets.push("".concat(numReps, "x400 swim (").concat(energySystem, " focus) r45\""));
-    mainSetTotalDist += numReps * 400;
+    for (var _i3 = 0, _generalDistances = generalDistances; _i3 < _generalDistances.length; _i3++) {
+      var dist = _generalDistances[_i3];
+      if (remainingDistanceForMainSet >= dist) {
+        var currentNumReps = Math.floor(remainingDistanceForMainSet / dist);
+        var currentRemainder = remainingDistanceForMainSet - currentNumReps * dist;
+        if (currentNumReps > 0) {
+          // Only consider if at least one rep is possible
+          if (currentRemainder < smallestRemainder) {
+            smallestRemainder = currentRemainder;
+            bestRepDist = dist;
+            bestNumReps = currentNumReps;
+          } else if (currentRemainder === smallestRemainder) {
+            if (dist > bestRepDist) {
+              // Prefer larger rep distance for same remainder
+              bestRepDist = dist;
+              bestNumReps = currentNumReps;
+            }
+          }
+        }
+      }
+    }
+    if (bestNumReps === 0 && remainingDistanceForMainSet >= 25) {
+      // If no standard dist fits (e.g. remaining 75), make one up
+      // Try to make it a multiple of 25 or 50.
+      if (remainingDistanceForMainSet >= 50) {
+        bestRepDist = Math.floor(remainingDistanceForMainSet / 50) * 50;
+        if (bestRepDist === 0) bestRepDist = 50; // if remaining is e.g. 70, floor(70/50)*50 = 50
+      } else {
+        // remaining is 25 to 49
+        bestRepDist = 25;
+      }
+      if (bestRepDist > 0) bestNumReps = Math.floor(remainingDistanceForMainSet / bestRepDist);
+      if (bestNumReps * bestRepDist > remainingDistanceForMainSet) bestNumReps = 0; // safety
+    }
+
+    // --- Start of new conservative adjustment logic ---
+    if (bestNumReps > 0 && bestRepDist > 0) {
+      var calculatedDist = bestNumReps * bestRepDist;
+      if (calculatedDist > remainingDistanceForMainSet * 0.80 && bestRepDist >= 200 && bestNumReps > 2) {
+        console.log("DEBUG GENERAL_ENDURANCE: Conservative adjustment. Original reps: ".concat(bestNumReps, "x").concat(bestRepDist, ". Reducing reps by 1."));
+        bestNumReps--;
+      }
+    }
+    // --- End of new conservative adjustment logic ---
+
+    if (bestNumReps > 0 && bestRepDist > 0) {
+      // Ensure still valid after potential decrement
+      var restTime = 30;
+      if (bestRepDist >= 400) restTime = 45;else if (bestRepDist >= 200) restTime = 30;else if (bestRepDist >= 100) restTime = 20;else restTime = 15;
+      sets.push("".concat(bestNumReps, "x").concat(bestRepDist, " swim (").concat(energySystem, " focus) r").concat(restTime, "\""));
+      mainSetTotalDist = bestNumReps * bestRepDist;
+    } else {
+      mainSetTotalDist = 0;
+    }
     return {
       sets: sets,
       mainSetTotalDist: mainSetTotalDist,
@@ -903,6 +1276,10 @@ function formatSecondsToMmSs(totalSeconds) {
  * @returns {string} A formatted string describing the generated workout.
  */
 function generateWorkout$1(totalDistanceYards, energySystem, cssTimeMmSs, workoutType) {
+  var VERY_SHORT_WORKOUT_THRESHOLD = 600; // yards
+  // noWarmupOption is imported and can be used directly or cloned if description needs change for this specific case
+  // const noWarmupForShortOption = { ...noWarmupOption, desc: "No warmup (short workout)" };
+
   var cssSecondsPer100 = parseCssTimeToSeconds(cssTimeMmSs);
   if (cssSecondsPer100 === null) {
     return "Error: Invalid CSS time format. Please use MM:SS (e.g., '1:10').";
@@ -912,7 +1289,62 @@ function generateWorkout$1(totalDistanceYards, energySystem, cssTimeMmSs, workou
   var mainSetUnits = "yards"; // Assuming SCY based on sources unless specified otherwise [7, 9, 16]
 
   // --- 1. Warmup Selection ---
-  var selectedWarmup = workoutFunctions.selectWarmup(warmups, noWarmupOption);
+  var selectedWarmup;
+  if (totalDistanceYards < VERY_SHORT_WORKOUT_THRESHOLD) {
+    selectedWarmup = _objectSpread2(_objectSpread2({}, noWarmupOption), {}, {
+      desc: "No warmup (short workout)"
+    });
+  } else {
+    // Re-introducing adaptive warmup logic for non-very-short workouts, with the specified modification
+    selectedWarmup = workoutFunctions.selectWarmup(warmups, noWarmupOption); // Initial selection
+    if (selectedWarmup && selectedWarmup.dist > 0) {
+      var minMainSetThreshold = 200;
+      var maxAllowedWarmupDist = totalDistanceYards - minMainSetThreshold;
+
+      // Apply the more stringent percentage cap: 0.4 (40%) instead of 0.6
+      maxAllowedWarmupDist = Math.min(maxAllowedWarmupDist, totalDistanceYards * 0.4);
+      if (maxAllowedWarmupDist < 0 && totalDistanceYards > 0) {
+        maxAllowedWarmupDist = totalDistanceYards * 0.4; // Fallback for small total distances if threshold makes it negative
+        // This 0.4 is different from the one above.
+        // Let's keep it as it was for this specific fallback:
+        // maxAllowedWarmupDist = totalDistanceYards * 0.4; // This logic was for very small total distances
+        // The logic from file before reset was:
+        // if (maxAllowedWarmupDist < 0 && totalDistanceYards > 0) { maxAllowedWarmupDist = totalDistanceYards * 0.4; }
+        // This specific 0.4 should remain if it's for the negative guard, distinct from the primary cap.
+        // Re-evaluating based on typical structure: the primary cap (now 0.4) applies first.
+        // Then, specific conditions for very small distances adjust if it results in negative or too small.
+        // The previous adaptive logic was:
+        // maxAllowedWarmupDist = Math.min(maxAllowedWarmupDist, totalDistanceYards * 0.6); // This is now 0.4
+        // if (maxAllowedWarmupDist < 0 && totalDistanceYards > 0) { maxAllowedWarmupDist = totalDistanceYards * 0.4; }
+        // The above line (totalDistanceYards * 0.4) was a fallback if the (totalDistanceYards - minMainSetThreshold) was negative.
+        // It seems the logic should be:
+        // 1. max = total - threshold
+        // 2. max = min(max, total * NEW_PRIMARY_CAP (0.4))
+        // 3. if max < 0 (because total was small), max = total * FALLBACK_CAP_FOR_SMALL_TOTAL (e.g. 0.4 or 0.5)
+        // 4. if max < 50 (and total >=50), max = 50.
+        // Let's stick to the prompt's direct change on the percentage line first.
+        // The other parts of the adaptive logic are:
+      } // End of the "maxAllowedWarmupDist < 0" check
+
+      if (maxAllowedWarmupDist < 50 && totalDistanceYards >= 50) {
+        maxAllowedWarmupDist = 50;
+      }
+      // Add a final guard if maxAllowedWarmupDist somehow ended up negative (e.g. if totalDistanceYards was < 50 but > 0)
+      if (maxAllowedWarmupDist < 0) maxAllowedWarmupDist = 0;
+      if (selectedWarmup.dist > maxAllowedWarmupDist) {
+        var suitableWarmups = warmups.filter(function (wu) {
+          return wu.dist <= maxAllowedWarmupDist && wu.dist > 0;
+        });
+        if (suitableWarmups.length > 0) {
+          selectedWarmup = suitableWarmups[Math.floor(Math.random() * suitableWarmups.length)];
+        } else {
+          selectedWarmup = noWarmupOption;
+        }
+      }
+    } else if (!selectedWarmup || selectedWarmup.dist === 0) {
+      selectedWarmup = noWarmupOption;
+    }
+  }
   if (selectedWarmup) {
     workoutDetails.push("WU: ".concat(selectedWarmup.desc));
     currentDistanceCovered += selectedWarmup.dist;
@@ -938,7 +1370,37 @@ function generateWorkout$1(totalDistanceYards, energySystem, cssTimeMmSs, workou
   currentDistanceCovered += mainSetTotalDist;
 
   // --- 3. Cool-down Selection ---
-  var selectedCooldown = workoutFunctions.selectCooldown(cooldowns);
+  var selectedCooldown;
+  var noCooldownForShortOption = {
+    desc: "No cooldown (short workout)",
+    dist: 0,
+    type: "none"
+  };
+  if (totalDistanceYards < VERY_SHORT_WORKOUT_THRESHOLD) {
+    selectedCooldown = noCooldownForShortOption;
+  } else {
+    // Re-introducing adaptive cooldown logic with the specified modification
+    var generalNoCooldownOption = {
+      desc: "No cooldown",
+      dist: 0,
+      type: "none"
+    }; // General purpose
+    var distanceAfterMainSet = currentDistanceCovered;
+    var distanceToTarget = totalDistanceYards - distanceAfterMainSet;
+    if (distanceAfterMainSet >= totalDistanceYards - 50) {
+      selectedCooldown = generalNoCooldownOption;
+    } else {
+      // Apply the more stringent buffer: 25 instead of 75
+      var suitableCooldowns = cooldowns.filter(function (cd) {
+        return cd.dist <= distanceToTarget + 25;
+      });
+      if (suitableCooldowns.length > 0) {
+        selectedCooldown = suitableCooldowns[Math.floor(Math.random() * suitableCooldowns.length)];
+      } else {
+        selectedCooldown = generalNoCooldownOption;
+      }
+    }
+  }
   if (selectedCooldown) {
     workoutDetails.push("CD: ".concat(selectedCooldown.desc));
     currentDistanceCovered += selectedCooldown.dist;
