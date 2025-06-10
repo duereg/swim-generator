@@ -225,7 +225,7 @@ describe('generateWorkout Integration Tests', () => {
 
         // Simulate generateWorkout's warmup logic
         let effectiveWarmupDist;
-        const initialSelectedWarmup = { desc: "No warmup bitches", dist: 0, type: "none" }; // From selectWarmupStub.returns
+        // const initialSelectedWarmup = { desc: "No warmup bitches", dist: 0, type: "none" }; // From selectWarmupStub.returns
 
         // The adaptive logic `if (initialSelectedWarmup && initialSelectedWarmup.dist > 0)` will be false.
         // Then `else if (!selectedWarmup || selectedWarmup.dist === 0)` in generateWorkout makes it use this 0 dist.
