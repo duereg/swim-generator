@@ -37,6 +37,64 @@ describe('CSS Helper Functions', () => {
     });
 });
 
+// Helper function to extract distance from workout string
+function getWorkoutDistance(workoutString) {
+    if (typeof workoutString !== 'string') return null;
+    const match = workoutString.match(/Total estimated distance: (\d+)/);
+    return match ? parseInt(match[1], 10) : null;
+}
+
+describe('generateWorkout Distance Adherence Tests', () => {
+    const runAdherenceTest = (targetDist, energySystem, cssTime, workoutType, deviationPercent, iterations = 5) => {
+        for (let i = 0; i < iterations; i++) {
+            const workoutString = generateWorkout(targetDist, energySystem, cssTime, workoutType);
+            const generatedDist = getWorkoutDistance(workoutString);
+
+            expect(generatedDist, `Generated distance should not be null (iteration ${i + 1}) for workout:
+${workoutString}`).to.be.a('number');
+            if (generatedDist === null) continue; // Skip further checks if null
+
+            const lowerBound = targetDist * (1 - deviationPercent);
+            const upperBound = targetDist * (1 + deviationPercent);
+
+            // Check if the generated distance is within the expected range
+            expect(generatedDist, `Workout (iter ${i + 1}):
+${workoutString}
+Target: ${targetDist}, Generated: ${generatedDist}, Expected: ${Math.round(lowerBound)}-${Math.round(upperBound)}`)
+                .to.be.at.least(lowerBound)
+                .and.at.most(upperBound);
+        }
+    };
+
+    it('should adhere to medium distance for THRESHOLD_SUSTAINED (EN2)', () => {
+        runAdherenceTest(2500, 'EN2', '1:30', 'THRESHOLD_SUSTAINED', 0.15); // +/- 15%
+    });
+
+    it('should adhere to short distance for SPEED_ENDURANCE (SP1)', () => {
+        runAdherenceTest(1200, 'SP1', '1:10', 'SPEED_ENDURANCE', 0.20); // +/- 20% for shorter, more variable sets
+    });
+
+    it('should adhere to very short distance for ENDURANCE_BASE (EN1)', () => {
+        runAdherenceTest(500, 'EN1', '1:40', 'ENDURANCE_BASE', 0.25); // +/- 25% for very short
+    });
+
+    it('should handle minimal distance (100 yards) for ENDURANCE_BASE (EN1)', () => {
+        runAdherenceTest(100, 'EN1', '2:00', 'ENDURANCE_BASE', 0.75); // +/- 75% (e.g. 25 to 175 yards)
+    });
+
+    it('should adhere to long distance for THRESHOLD_DEVELOPMENT (EN3)', () => {
+        runAdherenceTest(4000, 'EN3', '1:20', 'THRESHOLD_DEVELOPMENT', 0.15); // +/- 15%
+    });
+
+    it('should adhere to medium distance for GENERAL_ENDURANCE (default type via unknown type)', () => {
+        runAdherenceTest(2200, 'EN1', '1:35', 'UNKNOWN_TYPE_FOR_FALLBACK', 0.15); // +/- 15%
+    });
+
+    it('should adhere to medium distance for MAX_SPRINT (SP2)', () => {
+        runAdherenceTest(1500, 'SP2', '1:05', 'MAX_SPRINT', 0.20); // +/- 20%
+    });
+});
+
 describe('generateWorkout Integration Tests', () => {
     let selectWarmupStub;
     let generateMainSetStub;
