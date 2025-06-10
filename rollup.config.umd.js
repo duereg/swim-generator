@@ -1,7 +1,9 @@
-import config from './rollup.config';
+import config from './rollup.config.js';
 
-config.format = 'umd';
-config.dest = 'dist/swim-generator.umd.js';
-config.moduleName = 'swimGenerator';
+config.output.format = 'umd';
+config.output.file = 'dist/swim-generator.umd.js';
+config.output.name = 'swimGenerator';
+config.output.globals = { lodash: '_' };
+config.external = ['lodash'];
 
 export default config;
