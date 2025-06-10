@@ -107,14 +107,17 @@ describe('Workout Components', () => {
             })),
         };
 
+        // For line 111: 'dist' is used in the body of the function for GENERAL_ENDURANCE.
+        // If linter still flags it, it might be a configuration issue with the linter itself or how it handles spy arguments.
+        // For now, assuming it's correct as `dist` is used.
         const mockMainSetDefinitionsForFallback = {
-            'THRESHOLD_DEVELOPMENT': sinon.spy((energySystem, css, dist) => ({
+            'THRESHOLD_DEVELOPMENT': sinon.spy((energySystem, css, /* dist */) => ({ // dist is unused in THRESHOLD_DEVELOPMENT mock body
                 sets: [`THRESHOLD_DEVELOPMENT tiny set (${energySystem})`],
-                mainSetTotalDist: 50, // very small distance to trigger fallback
+                mainSetTotalDist: 50,
                 targetPacePer100: css,
                 descriptiveMessage: `Mocked THRESHOLD_DEVELOPMENT for ${energySystem}`
             })),
-            'GENERAL_ENDURANCE': sinon.spy((energySystem, css, dist) => ({
+            'GENERAL_ENDURANCE': sinon.spy((energySystem, css, dist) => ({ // dist is used here
                 sets: [`GENERAL_ENDURANCE fallback set (${energySystem}): ${dist}m @ ${css}s/100`],
                 mainSetTotalDist: dist,
                 targetPacePer100: css,
@@ -203,11 +206,11 @@ describe('Workout Components', () => {
             });
 
             const completelyLocalMockDefs = {
-                'THRESHOLD_DEVELOPMENT': (es, css, dist) => {
+                'THRESHOLD_DEVELOPMENT': (es, /* css, dist */) => { // css, dist were unused as localTdResponse only takes es
                     tdCalled = true;
                     return localTdResponse(es);
                 },
-                'GENERAL_ENDURANCE': (es, css, dist) => {
+                'GENERAL_ENDURANCE': (es, css, dist) => { // css, dist are used by localGeResponse
                     geCalled = true;
                     return localGeResponse(es, dist, css);
                 }
@@ -229,7 +232,7 @@ describe('Workout Components', () => {
             const workoutType = 'GENERAL_ENDURANCE';
             let geTinyCalled = false;
             const mockGeTinyDef = {
-                'GENERAL_ENDURANCE': (energySystem, css, dist) => {
+                'GENERAL_ENDURANCE': (energySystem, css /*, dist */) => { // dist was unused
                     geTinyCalled = true;
                     return {
                         sets: [`GENERAL_ENDURANCE tiny set (${energySystem})`],
