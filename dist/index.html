@@ -9,15 +9,40 @@
       .swim-generator--controls {
         padding-top: 1em;
       }
+      .swim-generator--input-group {
+        margin-top: 1em;
+      }
     </style>
   </head>
   <body>
     <div class='swim-generator'>
       <h1>Swim Generator 5560</h1>
       <div class='swim-generator--input'>
-        <div class='swim-generator--time-input'>
+        <div>
+          <label for="workoutTypeSelect">Workout Type</label>
+          <select id="workoutTypeSelect">
+            <option value="MIXED_UNDERWATERS" selected>MIXED_UNDERWATERS</option>
+            <option value="EN1">ENDURANCE_BASE</option>
+            <option value="EN2">THRESHOLD_SUSTAINED</option>
+            <option value="EN3">THRESHOLD_DEVELOPMENT</option>
+            <option value="SP1">SPEED_ENDURANCE</option>
+            <option value="SP2">MAX_SPRINT</option>
+            <option value="Default">GENERAL_ENDURANCE</option>
+          </select>
+        </div>
+        <div class='swim-generator--time-input swim-generator--input-group'>
           <input id="timeInput" type="number" value='30' />
           <span class="swim-generator--time-input--label">Minutes</span>
+        </div>
+        <div id="cssInputsContainer" style="display: none;" class="swim-generator--input-group">
+          <div>
+            <input id="distanceInput" type="number" value="2000" />
+            <span>Total Distance (yards)</span>
+          </div>
+          <div>
+            <input id="cssInput" type="text" value="1:20" />
+            <span>CSS Time (MM:SS)</span>
+          </div>
         </div>
         <div class='swim-generator--controls'>
           <button onclick="generate()">submit</button>
@@ -31,6 +56,24 @@
 
       var compiledTemplate = _.template(templateString);
 
+      var workoutTypeSelect = document.getElementById("workoutTypeSelect");
+      var timeInputContainer = document.querySelector(".swim-generator--time-input");
+      var cssInputsContainer = document.getElementById("cssInputsContainer");
+
+      function handleWorkoutTypeChange() {
+        if (workoutTypeSelect.value === "MIXED_UNDERWATERS") {
+          timeInputContainer.style.display = "";
+          cssInputsContainer.style.display = "none";
+        } else {
+          timeInputContainer.style.display = "none";
+          cssInputsContainer.style.display = "";
+        }
+      }
+
+      workoutTypeSelect.addEventListener("change", handleWorkoutTypeChange);
+      // Initial call to set visibility based on default
+      handleWorkoutTypeChange();
+
       function formatTime(sec_num) {
         var minutes = Math.floor(sec_num / 60);
         var seconds = sec_num - (minutes * 60);
@@ -41,16 +84,38 @@
       }
 
       function generate() {
-        var timeInSeconds = document.getElementById("timeInput").value * 60;
-        var workout = swimGenerator.generateWorkout(timeInSeconds);
-
+        var selectedWorkoutType = workoutTypeSelect.value;
         var timeDiv = document.getElementById("time");
-        timeDiv.innerHTML = "Total Time: " + formatTime(workout.seconds);
-
         var workoutDiv = document.getElementById("workout");
-        var workoutMarkup = _.map(workout.intervals, compiledTemplate).join(' ');
-        console.log(workoutMarkup);
-        workoutDiv.innerHTML = workoutMarkup;
+        workoutDiv.innerHTML = ""; // Clear previous workout
+
+        if (selectedWorkoutType === "MIXED_UNDERWATERS") {
+          var timeInSeconds = document.getElementById("timeInput").value * 60;
+          var workout = swimGenerator.generateWorkout(timeInSeconds);
+
+          timeDiv.innerHTML = "Total Time: " + formatTime(workout.seconds);
+          var workoutMarkup = _.map(workout.intervals, compiledTemplate).join(' ');
+          console.log(workoutMarkup);
+          workoutDiv.innerHTML = workoutMarkup;
+        } else {
+          var distance = parseInt(document.getElementById("distanceInput").value, 10);
+          var cssTime = document.getElementById("cssInput").value;
+          var workoutTypeOptionText = workoutTypeSelect.options[workoutTypeSelect.selectedIndex].text;
+          var workoutType = workoutTypeOptionText.split(' ')[0]; // E.g., "ENDURANCE_BASE"
+          var energySystem = selectedWorkoutType; // E.g., "EN1"
+
+          // Assuming swimGenerator.generateCssWorkout will be available
+          if (swimGenerator.generateCssWorkout) {
+            var workoutDetailsString = swimGenerator.generateCssWorkout(distance, energySystem, cssTime, workoutType);
+            var pre = document.createElement("pre");
+            pre.textContent = workoutDetailsString;
+            workoutDiv.appendChild(pre);
+            timeDiv.innerHTML = ""; // Clear time display for CSS workouts
+          } else {
+            workoutDiv.innerHTML = "CSS workout generator function not available yet.";
+            timeDiv.innerHTML = "";
+          }
+        }
       }
     </script>
   </body>
