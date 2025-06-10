@@ -535,13 +535,17 @@ var swims = [
 
 function repeatIntervals(secondsLeft, generatedPattern) {
   if (secondsLeft < 20) {
-    console.log("weird amount of time left: ".concat(secondsLeft, ". returning original pattern"));
+    // console.log(`weird amount of time left: ${secondsLeft}. returning original pattern`);
     return generatedPattern;
   }
-  console.log('repeatIntervals');
+
+  // console.log('repeatIntervals');
+
   var seconds = 0;
   var selectedSwim = getThingViaTimeLimit("time", secondsLeft, swims);
-  console.log("repeating interval of type ".concat(selectedSwim.name));
+
+  // console.log(`repeating interval of type ${selectedSwim.name}`)
+
   while (seconds + selectedSwim.time <= secondsLeft) {
     var timeLeft = secondsLeft - seconds;
     var maxRepetition = Math.floor(timeLeft / selectedSwim.time);
@@ -550,7 +554,9 @@ function repeatIntervals(secondsLeft, generatedPattern) {
     maxRepetition = maxRepetition * selectedSwim.interval > 8 ? Math.floor(8 / selectedSwim.interval) : maxRepetition;
     var intervalLength = _.random(1, maxRepetition);
     var secondsToAdd = selectedSwim.time * intervalLength;
-    console.log('adding swim', selectedSwim);
+
+    // console.log('adding swim', selectedSwim);
+
     seconds += secondsToAdd;
     generatedPattern.seconds += secondsToAdd;
     generatedPattern.intervals.push({
@@ -565,7 +571,7 @@ function repeatIntervals(secondsLeft, generatedPattern) {
 
 function getSwimByLength(secondsLeft, intervalLength, number) {
   if (secondsLeft < 20 * number) {
-    console.log("weird amount of time left: ".concat(secondsLeft, ". returning null"));
+    // console.log(`weird amount of time left: ${secondsLeft}. returning null`);
     return null;
   }
   var selectSwim;
@@ -575,13 +581,13 @@ function getSwimByLength(secondsLeft, intervalLength, number) {
     numThings++;
     selectSwim = _.sample(filteredSwims);
     if (selectSwim.time * number > secondsLeft) {
-      console.log("swim too long ".concat(selectSwim.time, " ").concat(number, " ").concat(secondsLeft));
+      // console.log(`swim too long ${selectSwim.time} ${number} ${secondsLeft}`);
       filteredSwims = _.filter(filteredSwims, function (swim) {
         return swim.time < selectSwim.time;
       });
       selectSwim = null;
     } else if (selectSwim.interval > intervalLength || intervalLength % selectSwim.interval !== 0) {
-      console.log("interval too long ".concat(selectSwim.interval, " ").concat(intervalLength));
+      // console.log(`interval too long ${selectSwim.interval} ${intervalLength}`);
       filteredSwims = _.filter(filteredSwims, function (swim) {
         return swim.interval < selectSwim.interval;
       });
@@ -623,7 +629,7 @@ function mapSwimGroupsToSwims(secondsLeft, selectedPattern, groupsWithCount) {
 }
 function createSwimsFromPattern(secondsLeft, generatedPattern, selectedPattern) {
   if (secondsLeft < 20) {
-    console.log("weird amount of time left: ".concat(secondsLeft, ". returning original pattern"));
+    // console.log(`weird amount of time left: ${secondsLeft}. returning original pattern`);
     return generatedPattern;
   }
   var groupsWithCount = createSwimGroupCount(selectedPattern);
@@ -653,7 +659,7 @@ function isSameType(intervalA, intervalB) {
   return intervalA.type === intervalB.type && intervalA.length === intervalB.length && intervalA.time === intervalB.time;
 }
 function doubleLengths(pattern) {
-  console.log('doubleLengths');
+  // console.log('doubleLengths');
   pattern.seconds *= 2;
   _.forEach(pattern.intervals, function (interval) {
     interval.length *= 2;
@@ -661,7 +667,7 @@ function doubleLengths(pattern) {
   });
 }
 function doubleIntervals(pattern) {
-  console.log('doubleIntervals');
+  // console.log('doubleIntervals');
   pattern.seconds *= 2;
   _.forEach(pattern.intervals, function (interval) {
     interval.number *= 2;
@@ -675,14 +681,16 @@ function condenseWorkout(pattern) {
       return memo;
     }
     if (isSameType(memo[intervalsLength - 1], interval)) {
-      console.log('condensing', memo[intervalsLength - 1], interval);
+      // console.log('condensing', memo[intervalsLength - 1], interval);
       memo[intervalsLength - 1].number += interval.number;
     } else {
       memo.push(interval);
     }
     return memo;
   }, []);
-  console.log(pattern);
+
+  // console.log(pattern);
+
   return pattern;
 }
 function generatePattern(seconds) {
@@ -691,13 +699,17 @@ function generatePattern(seconds) {
     intervals: []
   };
   if (seconds < 20) {
-    console.log("weird amount of time left: ".concat(seconds, ". returning generated pattern"));
+    // console.log(`weird amount of time left: ${seconds}. returning generated pattern`);
     return generatedPattern;
   }
-  console.log('generatePattern');
+
+  // console.log('generatePattern');
+
   var timeLeft = seconds - generatedPattern.seconds;
   var selectedPattern = getThingViaTimeLimit("minTime", timeLeft, patterns);
-  console.log("attempting to generate ".concat(selectedPattern.name, " pattern, which needs ").concat(selectedPattern.minTime, ", and has ").concat(timeLeft));
+
+  // console.log(`attempting to generate ${selectedPattern.name} pattern, which needs ${selectedPattern.minTime}, and has ${timeLeft}`)
+
   if (selectedPattern.repeat === true) {
     return repeatIntervals(timeLeft, generatedPattern);
   } else {
