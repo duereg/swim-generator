@@ -145,7 +145,7 @@ describe('generateWorkout Integration Tests', () => {
         expect(result).to.include("  - 4x100 mock set");
         // expect(result).to.include("CD: Mock Cooldown 200yd");
 
-        const expectedTotalDist = 400 + 400 + 200;
+        // const expectedTotalDist = 400 + 400 + 200;
         // expect(result).to.include(`Total estimated distance: ${expectedTotalDist} yards`);
         expect(result).to.include(`CSS: ${cssTime}`);
         expect(result).to.include(`Workout Type: ${workoutType}`); // Check for Workout Type line
@@ -187,7 +187,7 @@ describe('generateWorkout Integration Tests', () => {
         // expect(selectCooldownStub.calledOnce).to.be.true;
 
         expect(result).to.include("WU: No warmup bitches");
-        const expectedTotalDist = 0 + 400 + 200;
+        // const expectedTotalDist = 0 + 400 + 200;
         // expect(result).to.include(`Total estimated distance: ${expectedTotalDist} yards`);
         expect(result).to.include(`Workout Type: ${workoutType}`);
     });
