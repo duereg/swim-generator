@@ -1457,11 +1457,6 @@ var swims = [
 		time: 30
 	},
 	{
-		name: "BOGDAT",
-		interval: 1,
-		time: 30
-	},
-	{
 		name: "Swim",
 		interval: 1,
 		time: 20
