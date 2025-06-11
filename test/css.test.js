@@ -94,6 +94,38 @@ describe('generateWorkout Distance Adherence Tests', () => {
     it('should adhere to medium distance for MAX_SPRINT (SP2)', () => {
         runAdherenceTest(800, 'SP2', '1:05', 'MAX_SPRINT', 0.20);
     });
+
+    it('should attempt to generate a CSS workout close to 4000 yards (EN2)', () => {
+        // Using EN2 (THRESHOLD_SUSTAINED) as an example for a longer workout type
+        // Deviation initially set to 0.25.
+        runAdherenceTest(4000, 'EN2', '1:30', 'THRESHOLD_SUSTAINED', 0.25, 1); // iterations = 1 for faster initial check
+    });
+
+    it('should attempt to generate a CSS workout close to 5000 yards (EN1)', () => {
+        // Using EN1 (ENDURANCE_BASE) which we know has internal logic capping around 5000yd
+        // Deviation initially set to 0.25.
+        // This will test if it can reach near its own maximum defined in ENDURANCE_BASE.js
+        runAdherenceTest(5000, 'EN1', '1:40', 'ENDURANCE_BASE', 0.25, 1); // iterations = 1
+    });
+
+    it('should test CSS workout generation when target exceeds known caps (e.g., >5000yd for EN1)', () => {
+        // Using EN1, target 6000, expecting it to cap around 5000yd based on ENDURANCE_BASE.js logic
+        // Allowing a wider deviation that should encompass the expected cap.
+        // If ENDURANCE_BASE.js caps at 5000, then 5000 is within 6000 +/- 30% (4200 to 7800)
+        runAdherenceTest(6000, 'EN1', '1:40', 'ENDURANCE_BASE', 0.30, 1); // iterations = 1
+    });
+
+    it('should attempt to generate a CSS workout close to 5000 yards (EN3)', () => {
+        runAdherenceTest(5000, 'EN3', '1:25', 'THRESHOLD_DEVELOPMENT', 0.25, 1); // iterations = 1 for faster initial check
+    });
+
+    it('should attempt to generate a CSS workout close to 5000 yards (SP1)', () => {
+        runAdherenceTest(5000, 'SP1', '1:15', 'SPEED_ENDURANCE', 0.25, 1); // iterations = 1
+    });
+
+    it('should attempt to generate a CSS workout close to 5000 yards (SP2)', () => {
+        runAdherenceTest(5000, 'SP2', '1:10', 'MAX_SPRINT', 0.25, 1); // iterations = 1
+    });
 });
 
 describe('generateWorkout Integration Tests', () => {

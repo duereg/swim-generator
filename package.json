@@ -44,7 +44,7 @@
     "chai": "^5.2.0",
     "eslint": "^9.28.0",
     "mocha": "^11.6.0",
-    "rollup": "^4.42.0",
+    "rollup": "^4.43.0",
     "sinon": "^20.0.0",
     "source-map-support": "^0.5.21"
   },
