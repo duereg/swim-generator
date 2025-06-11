@@ -737,6 +737,8 @@
     var mainSetTotalDist = 0;
     // New pace: At CSS
     var targetPacePer100 = cssSecondsPer100;
+    console.log('--- THRESHOLD_SUSTAINED ---');
+    console.log('remainingDistanceForMainSet:', remainingDistanceForMainSet);
     var en2SetPatterns = [
     // Ordered by a rough preference or commonality, can be adjusted
     {
@@ -786,86 +788,131 @@
       maxReps: 6,
       paceDesc: 'CSS'
     }];
-    var bestFitSet = null;
-    var maxAchievedDistance = 0;
+    console.log('en2SetPatterns:', JSON.stringify(en2SetPatterns.map(function (p) {
+      return p.id;
+    })));
+    var viablePatterns = [];
     for (var _i = 0, _en2SetPatterns = en2SetPatterns; _i < _en2SetPatterns.length; _i++) {
       var pattern = _en2SetPatterns[_i];
       if (pattern.baseDist) {
-        // For NxDist patterns (800, 1000)
+        // For NxDist patterns
         if (remainingDistanceForMainSet >= pattern.baseDist) {
           var numReps = Math.floor(remainingDistanceForMainSet / pattern.baseDist);
           numReps = Math.min(numReps, pattern.maxReps);
           if (numReps > 0) {
             var currentSetTotalDist = numReps * pattern.baseDist;
-            if (currentSetTotalDist > maxAchievedDistance) {
-              maxAchievedDistance = currentSetTotalDist;
-              bestFitSet = {
-                reps: numReps,
-                dist: pattern.baseDist,
-                rest: pattern.rest,
-                totalDist: currentSetTotalDist,
-                paceDesc: pattern.paceDesc,
-                id: "".concat(numReps, "x").concat(pattern.baseDist)
-              };
-            }
+            viablePatterns.push({
+              reps: numReps,
+              dist: pattern.baseDist,
+              rest: pattern.rest,
+              totalDist: currentSetTotalDist,
+              paceDesc: pattern.paceDesc,
+              id: "".concat(numReps, "x").concat(pattern.baseDist)
+            });
           }
         }
       } else {
         // For fixed rep x dist patterns
         if (remainingDistanceForMainSet >= pattern.requiredDist) {
-          // If it fits, it's a candidate. Prefer sets that use more of the available distance.
-          if (pattern.requiredDist > maxAchievedDistance) {
-            maxAchievedDistance = pattern.requiredDist;
-            bestFitSet = {
-              reps: pattern.reps,
-              dist: pattern.dist,
-              rest: pattern.rest,
-              totalDist: pattern.requiredDist,
-              paceDesc: pattern.paceDesc,
-              id: pattern.id
-            };
-          }
+          viablePatterns.push({
+            reps: pattern.reps,
+            dist: pattern.dist,
+            rest: pattern.rest,
+            totalDist: pattern.requiredDist,
+            paceDesc: pattern.paceDesc,
+            id: pattern.id
+          });
         }
       }
     }
-
-    // Fallback: if no specific pattern fits, try to construct a simpler set.
-    // E.g., if remaining is 1200, 18x100 (1800) is too much.
-    // Perhaps multiple shorter sets or a smaller version of one.
-    // The guidelines are specific about the set structures.
-    // If remainingDistanceForMainSet is too small for any of these, it produces no set.
-    // Let's try a simpler fallback: if less than the smallest full set (1800), try to do multiples of 100s or 200s at CSS.
-    if (!bestFitSet && remainingDistanceForMainSet >= 100) {
-      var fallbackDist = 0,
-        fallbackReps = 0,
-        fallbackRest = '',
-        fallbackTotal = 0;
-      if (remainingDistanceForMainSet >= 200) {
-        // Try 200s first
-        fallbackDist = 200;
-        fallbackReps = Math.min(Math.floor(remainingDistanceForMainSet / 200), 40);
-        fallbackRest = 'r20"';
+    console.log('Viable patterns after filtering:', JSON.stringify(viablePatterns.map(function (p) {
+      return p.id;
+    })));
+    var bestFitSet = null;
+    var selectionMethod = '';
+    if (viablePatterns.length > 0) {
+      if (viablePatterns.length === 1) {
+        bestFitSet = viablePatterns[0];
+        selectionMethod = 'Single viable pattern';
       } else {
-        // Must be 100s
-        fallbackDist = 100;
-        fallbackReps = Math.min(Math.floor(remainingDistanceForMainSet / 100), 60);
-        fallbackRest = 'r10"';
+        // Prioritize patterns that use more of the available distance
+        var maxDistance = 0;
+        viablePatterns.forEach(function (pattern) {
+          if (pattern.totalDist > maxDistance) {
+            maxDistance = pattern.totalDist;
+          }
+        });
+        var bestDistancePatterns = viablePatterns.filter(function (p) {
+          return p.totalDist === maxDistance;
+        });
+        if (bestDistancePatterns.length === 1) {
+          bestFitSet = bestDistancePatterns[0];
+          selectionMethod = 'Single best distance pattern';
+        } else {
+          // If multiple patterns achieve the same max distance, pick one randomly
+          var randomIndex = Math.floor(Math.random() * bestDistancePatterns.length);
+          bestFitSet = bestDistancePatterns[randomIndex];
+          selectionMethod = "Randomly selected from ".concat(bestDistancePatterns.length, " best distance patterns");
+        }
       }
-      if (fallbackReps > 0) {
-        fallbackTotal = fallbackReps * fallbackDist;
-        if (fallbackTotal > 0) {
-          // Ensure it's a meaningful set
-          bestFitSet = {
-            reps: fallbackReps,
-            dist: fallbackDist,
-            rest: fallbackRest,
-            totalDist: fallbackTotal,
-            paceDesc: 'CSS',
-            id: "".concat(fallbackReps, "x").concat(fallbackDist, " (fallback)")
-          };
+    } else {
+      selectionMethod = 'Fallback logic initiated';
+      // Fallback: if no specific pattern fits, try to construct a simpler set.
+      // E.g., if remaining is 1200, 18x100 (1800) is too much.
+      // Perhaps multiple shorter sets or a smaller version of one.
+      // The guidelines are specific about the set structures.
+      // If remainingDistanceForMainSet is too small for any of these, it produces no set.
+      // Let's try a simpler fallback: if less than the smallest full set (1800), try to do multiples of 100s or 200s at CSS.
+      if (!bestFitSet && remainingDistanceForMainSet >= 100) {
+        var fallbackDist = 0,
+          fallbackReps = 0,
+          fallbackRest = '',
+          fallbackTotal = 0;
+        if (remainingDistanceForMainSet >= 200) {
+          // Try 200s first
+          fallbackDist = 200;
+          fallbackReps = Math.min(Math.floor(remainingDistanceForMainSet / 200), 40);
+          fallbackRest = 'r20"';
+          selectionMethod += ' -> Attempting fallback with 200s';
+        } else {
+          // Must be 100s
+          fallbackDist = 100;
+          fallbackReps = Math.min(Math.floor(remainingDistanceForMainSet / 100), 60);
+          fallbackRest = 'r10"';
+          selectionMethod += ' -> Attempting fallback with 100s';
+        }
+        if (fallbackReps > 0) {
+          fallbackTotal = fallbackReps * fallbackDist;
+          if (fallbackTotal > 0) {
+            // Ensure it's a meaningful set
+            bestFitSet = {
+              reps: fallbackReps,
+              dist: fallbackDist,
+              rest: fallbackRest,
+              totalDist: fallbackTotal,
+              paceDesc: 'CSS',
+              id: "".concat(fallbackReps, "x").concat(fallbackDist, " (fallback)")
+            };
+            selectionMethod += " -> Selected fallback: ".concat(bestFitSet.id);
+          } else {
+            selectionMethod += ' -> Fallback resulted in no meaningful set (totalDist <=0)';
+          }
+        } else {
+          selectionMethod += ' -> Fallback resulted in no meaningful set (fallbackReps <=0)';
+        }
+      } else {
+        if (bestFitSet) {
+          // This case should ideally not be reached if !bestFitSet is the entry condition
+          selectionMethod += ' -> Fallback logic skipped (bestFitSet already found, unexpected)';
+        } else if (remainingDistanceForMainSet < 100) {
+          selectionMethod += ' -> Fallback logic skipped (remainingDistance < 100)';
+        } else {
+          selectionMethod += ' -> Fallback logic skipped (conditions not met, this is unexpected if viablePatterns was empty)';
         }
       }
     }
+    console.log('Pattern selection method:', selectionMethod);
+    console.log('Final bestFitSet:', bestFitSet ? JSON.stringify(bestFitSet) : 'null');
     var descriptiveMessage;
     if (bestFitSet) {
       sets.push("".concat(bestFitSet.reps, "x").concat(bestFitSet.dist, " ").concat(energySystem, " focus swim @ ").concat(bestFitSet.paceDesc, " ").concat(bestFitSet.rest));
@@ -879,6 +926,8 @@
         descriptiveMessage = "EN2: Could not fit standard EN2 set for ".concat(energySystem, ". Available: ").concat(remainingDistanceForMainSet, ".");
       }
     }
+    console.log('Descriptive message:', descriptiveMessage);
+    console.log('--- END THRESHOLD_SUSTAINED ---');
     return {
       sets: sets,
       mainSetTotalDist: mainSetTotalDist,
