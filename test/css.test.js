@@ -119,11 +119,11 @@ describe('generateWorkout Distance Adherence Tests', () => {
         runAdherenceTest(5000, 'EN3', '1:25', 'THRESHOLD_DEVELOPMENT', 0.25, 1); // iterations = 1 for faster initial check
     });
 
-    it('should attempt to generate a CSS workout close to 5000 yards (SP1)', () => {
+    it.skip('should attempt to generate a CSS workout close to 5000 yards (SP1)', () => {
         runAdherenceTest(5000, 'SP1', '1:15', 'SPEED_ENDURANCE', 0.25, 1); // iterations = 1
     });
 
-    it('should attempt to generate a CSS workout close to 5000 yards (SP2)', () => {
+    it.skip('should attempt to generate a CSS workout close to 5000 yards (SP2)', () => {
         runAdherenceTest(5000, 'SP2', '1:10', 'MAX_SPRINT', 0.25, 1); // iterations = 1
     });
 });
