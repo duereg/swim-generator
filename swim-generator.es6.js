@@ -771,7 +771,7 @@ var THRESHOLD_SUSTAINED = function THRESHOLD_SUSTAINED(energySystem, cssSecondsP
     id: 'Nx800',
     baseDist: 800,
     rest: 'r90"',
-    maxReps: 3,
+    maxReps: 8,
     paceDesc: 'CSS'
   },
   // 3x800=2400
@@ -779,7 +779,7 @@ var THRESHOLD_SUSTAINED = function THRESHOLD_SUSTAINED(energySystem, cssSecondsP
     id: 'Nx1000',
     baseDist: 1000,
     rest: 'r90"',
-    maxReps: 2,
+    maxReps: 6,
     paceDesc: 'CSS'
   } // 2x1000=2000
   ];
@@ -893,7 +893,24 @@ var THRESHOLD_DEVELOPMENT = function THRESHOLD_DEVELOPMENT(energySystem, cssSeco
   var targetPacePer100 = cssSecondsPer100 - 1 - Math.random(); // Results in css - 1.0 to css - 1.999...
 
   var en3SetPatterns = [
-  // Ordered by required distance (largest first) to pick the biggest one that fits
+  // New Nx patterns for longer distances
+  {
+    idFormat: 'Nx1000',
+    baseDist: 1000,
+    maxReps: 6,
+    rest: 'r120"',
+    paceDesc: 'CSS -1-2s'
+  },
+  // 4x1000 = 4000
+  {
+    idFormat: 'Nx800',
+    baseDist: 800,
+    maxReps: 8,
+    rest: 'r90"',
+    paceDesc: 'CSS -1-2s'
+  },
+  // 5x800 = 4000
+  // Existing fixed patterns (can be ordered by preference or required distance)
   {
     id: '4x600',
     reps: 4,
@@ -916,27 +933,57 @@ var THRESHOLD_DEVELOPMENT = function THRESHOLD_DEVELOPMENT(energySystem, cssSeco
     requiredDist: 4 * 400,
     paceDesc: 'CSS -1-2s'
   }];
-  var chosenSet = null;
+  var bestFitSet = null;
+  var maxAchievedDistance = 0;
   for (var _i = 0, _en3SetPatterns = en3SetPatterns; _i < _en3SetPatterns.length; _i++) {
     var pattern = _en3SetPatterns[_i];
-    if (remainingDistanceForMainSet >= pattern.requiredDist) {
-      chosenSet = pattern;
-      break; // Found the largest fitting pattern
+    if (pattern.baseDist) {
+      // For NxDist patterns (800, 1000)
+      if (remainingDistanceForMainSet >= pattern.baseDist) {
+        var numReps = Math.floor(remainingDistanceForMainSet / pattern.baseDist);
+        numReps = Math.min(numReps, pattern.maxReps);
+        if (numReps > 0) {
+          var currentSetTotalDist = numReps * pattern.baseDist;
+          if (currentSetTotalDist > maxAchievedDistance) {
+            maxAchievedDistance = currentSetTotalDist;
+            bestFitSet = {
+              reps: numReps,
+              dist: pattern.baseDist,
+              rest: pattern.rest,
+              totalDist: currentSetTotalDist,
+              paceDesc: pattern.paceDesc,
+              id: "".concat(numReps, "x").concat(pattern.baseDist) // Dynamic ID
+            };
+          }
+        }
+      }
+    } else {
+      // For fixed rep x dist patterns (4x600, 4x500, 4x400)
+      if (remainingDistanceForMainSet >= pattern.requiredDist) {
+        // If it fits and is larger than any previously found NxDist set
+        if (pattern.requiredDist > maxAchievedDistance) {
+          maxAchievedDistance = pattern.requiredDist;
+          bestFitSet = {
+            reps: pattern.reps,
+            dist: pattern.dist,
+            rest: pattern.rest,
+            totalDist: pattern.requiredDist,
+            paceDesc: pattern.paceDesc,
+            id: pattern.id // Fixed ID
+          };
+        }
+      }
     }
   }
 
-  // Fallback: If no pattern fits, maybe try a smaller number of reps of the smallest distance?
-  // e.g., if remaining is 1000, 4x400 (1600) doesn't fit. Maybe 2x400?
-  // The guideline is "4X500", "4X400", "4x600". It's quite specific about 4 reps.
-  // For now, if a full pattern doesn't fit, no set is generated.
-  // Minimum requirement for EN3 would be the smallest set: 4x400 = 1600 yards.
-  // Or, we could allow fewer reps if at least one rep of the smallest distance (400) fits.
-  // Let's try to allow partial sets if at least one rep of 400, 500, or 600 can be done.
-  // And prioritize 4 reps if possible.
-
-  if (!chosenSet && remainingDistanceForMainSet >= 400) {
-    // Min distance for a single rep
-    var singleRepOptions = [{
+  // Fallback logic: if remaining distance is less than the smallest fixed set (4x400=1600)
+  // but larger than the smallest single rep (400), try to make a smaller set.
+  // This prioritizes fitting any of the defined patterns first, even if they are large.
+  // If no pattern fits (e.g. remainingDistanceForMainSet is 1200), this fallback kicks in.
+  if (!bestFitSet && remainingDistanceForMainSet >= 400) {
+    var singleRepOptions = [
+    // Keep baseReps for fallback scaling, but try to fill remaining
+    {
       dist: 600,
       rest: 'r90"',
       paceDesc: 'CSS -1-2s',
@@ -952,59 +999,50 @@ var THRESHOLD_DEVELOPMENT = function THRESHOLD_DEVELOPMENT(energySystem, cssSeco
       paceDesc: 'CSS -1-2s',
       baseReps: 4
     }];
-    var bestPartialOption = null;
-    var maxPartialYardage = 0;
+    var bestFallbackOption = null;
+    var maxFallbackYardage = 0;
     for (var _i2 = 0, _singleRepOptions = singleRepOptions; _i2 < _singleRepOptions.length; _i2++) {
       var option = _singleRepOptions[_i2];
       if (remainingDistanceForMainSet >= option.dist) {
-        var numReps = Math.floor(remainingDistanceForMainSet / option.dist);
-        numReps = Math.min(numReps, option.baseReps); // Try to do up to 4 reps
+        // Must be able to do at least one rep
+        var _numReps = Math.floor(remainingDistanceForMainSet / option.dist);
+        // For fallback, don't necessarily cap at baseReps, try to use up the distance
+        // but still keep it reasonable, e.g. not more than maxReps of new patterns if applicable
+        // For simplicity here, let's cap at a slightly higher number like 6-8 for fallback
+        _numReps = Math.min(_numReps, 6); // Example cap for fallback reps
 
-        if (numReps > 0) {
-          var currentYardage = numReps * option.dist;
-          // Prefer options that use more yardage. If tied, prefer more reps. If also tied, prefer longer distance.
-          if (currentYardage > maxPartialYardage) {
-            maxPartialYardage = currentYardage;
-            bestPartialOption = _objectSpread2(_objectSpread2({}, option), {}, {
-              reps: numReps,
-              requiredDist: currentYardage,
-              id: "".concat(numReps, "x").concat(option.dist)
-            });
-          } else if (currentYardage === maxPartialYardage) {
-            if (numReps > bestPartialOption.reps) {
-              bestPartialOption = _objectSpread2(_objectSpread2({}, option), {}, {
-                reps: numReps,
-                requiredDist: currentYardage,
-                id: "".concat(numReps, "x").concat(option.dist)
-              });
-            } else if (numReps === bestPartialOption.reps && option.dist > bestPartialOption.dist) {
-              bestPartialOption = _objectSpread2(_objectSpread2({}, option), {}, {
-                reps: numReps,
-                requiredDist: currentYardage,
-                id: "".concat(numReps, "x").concat(option.dist)
-              });
-            }
+        if (_numReps > 0) {
+          var currentYardage = _numReps * option.dist;
+          if (currentYardage > maxFallbackYardage) {
+            maxFallbackYardage = currentYardage;
+            bestFallbackOption = {
+              reps: _numReps,
+              dist: option.dist,
+              rest: option.rest,
+              totalDist: currentYardage,
+              paceDesc: option.paceDesc,
+              id: "".concat(_numReps, "x").concat(option.dist, " (fallback)")
+            };
           }
         }
       }
     }
-    if (bestPartialOption && bestPartialOption.reps > 0) {
-      // Ensure at least 1 rep
-      chosenSet = bestPartialOption;
+    if (bestFallbackOption) {
+      bestFitSet = bestFallbackOption; // Use this fallback set
     }
   }
   var descriptiveMessage;
-  if (chosenSet) {
-    sets.push("".concat(chosenSet.reps, "x").concat(chosenSet.dist, " ").concat(energySystem, " focus swim @ ").concat(chosenSet.paceDesc, " ").concat(chosenSet.rest));
-    mainSetTotalDist = chosenSet.requiredDist;
-    descriptiveMessage = "EN3: ".concat(chosenSet.id, " (").concat(energySystem, ") @ ").concat(chosenSet.paceDesc, ".");
+  if (bestFitSet) {
+    sets.push("".concat(bestFitSet.reps, "x").concat(bestFitSet.dist, " ").concat(energySystem, " focus swim @ ").concat(bestFitSet.paceDesc, " ").concat(bestFitSet.rest));
+    mainSetTotalDist = bestFitSet.totalDist; // Use totalDist from the chosen set object
+    descriptiveMessage = "EN3: ".concat(bestFitSet.id, " (").concat(energySystem, ") @ ").concat(bestFitSet.paceDesc, ".");
   } else {
     mainSetTotalDist = 0;
-    var minReq = 400; // Smallest single rep distance
+    var minReq = 400; // Smallest single rep distance for any consideration
     if (remainingDistanceForMainSet < minReq) {
       descriptiveMessage = "EN3: Too short for EN3 sets (min rep 400). Available: ".concat(remainingDistanceForMainSet, ".");
     } else {
-      descriptiveMessage = "EN3: Could not fit standard EN3 set for ".concat(energySystem, ". Available: ").concat(remainingDistanceForMainSet, ". Required e.g. 4x400=1600.");
+      descriptiveMessage = "EN3: Could not fit standard or fallback EN3 set for ".concat(energySystem, ". Available: ").concat(remainingDistanceForMainSet, ".");
     }
   }
   return {
@@ -1045,7 +1083,7 @@ var SPEED_ENDURANCE = function SPEED_ENDURANCE(energySystem, cssSecondsPer100, r
 
   // SP1 overall set length: 400 to 800yd.
   // We'll use remainingDistanceForMainSet, but cap it effectively for SP1's typical range.
-  var targetSp1TotalYardage = Math.max(400, Math.min(remainingDistanceForMainSet, 800));
+  var targetSp1TotalYardage = Math.max(400, Math.min(remainingDistanceForMainSet, 4500));
   if (remainingDistanceForMainSet < sp1RepDistances[0]) {
     // Smallest rep is 25
     return {
@@ -1063,10 +1101,7 @@ var SPEED_ENDURANCE = function SPEED_ENDURANCE(energySystem, cssSecondsPer100, r
       descriptiveMessage: "SP1: Target yardage too low. Available: ".concat(remainingDistanceForMainSet, ".")
     };
   }
-  var numBlocks;
-  if (targetSp1TotalYardage < 300) numBlocks = 1; // Should be rare given targetSp1TotalYardage starts at 400
-  else if (targetSp1TotalYardage < 600) numBlocks = 1; // Prefer 1 block for < 600
-  else numBlocks = 2; // 2 blocks for 600-800
+  var numBlocks = Math.max(1, Math.ceil(targetSp1TotalYardage / 800)); // Dynamic blocks, avg ~800yd per block
 
   var accumulatedDistInSp1Set = 0;
   var actualRemainingForSp1Blocks = targetSp1TotalYardage;
@@ -1188,7 +1223,7 @@ var MAX_SPRINT = function MAX_SPRINT(energySystem, cssSecondsPer100, remainingDi
   var targetPacePer100 = cssSecondsPer100 - 10 - Math.random() * 5;
 
   // SP2 overall set length: 300 to 600yds.
-  var targetSp2TotalYardage = Math.max(300, Math.min(remainingDistanceForMainSet, 600));
+  var targetSp2TotalYardage = Math.max(300, Math.min(remainingDistanceForMainSet, 4500));
   if (remainingDistanceForMainSet < sp2RepDistances[0]) {
     // Smallest rep is 25
     return {
@@ -1233,11 +1268,6 @@ var MAX_SPRINT = function MAX_SPRINT(energySystem, cssSecondsPer100, remainingDi
     };
   }
   numReps = Math.floor(targetSp2TotalYardage / repDist);
-  // Max reps to keep total in range. Example: 12x25=300, 6x50=300. 24x25=600, 12x50=600.
-  var maxRepsCalculated;
-  if (repDist === 25) maxRepsCalculated = 24;else if (repDist === 50) maxRepsCalculated = 12;else maxRepsCalculated = 1; // Should not happen
-
-  numReps = Math.min(numReps, maxRepsCalculated);
   numReps = Math.max(numReps, 1); // Ensure at least 1 rep if we decided on a repDist
 
   var actualSetTotalYardage = numReps * repDist;
@@ -1330,7 +1360,7 @@ var GENERAL_ENDURANCE = function GENERAL_ENDURANCE(energySystem, cssSecondsPer10
   if (bestNumReps > 0 && bestRepDist > 0) {
     // Ensure still valid after potential decrement
     var restTime = 30;
-    if (bestRepDist >= 400) restTime = 45;else if (bestRepDist >= 200) restTime = 30;else if (bestRepDist >= 100) restTime = 20;else restTime = 15;
+    if (bestRepDist >= 300) restTime = 45;else if (bestRepDist >= 200) restTime = 30;else if (bestRepDist >= 100) restTime = 20;else restTime = 15;
     sets.push("".concat(bestNumReps, "x").concat(bestRepDist, " swim (").concat(energySystem, " focus) r").concat(restTime, "\""));
     mainSetTotalDist = bestNumReps * bestRepDist;
   } else {
@@ -1741,7 +1771,7 @@ function repeatIntervals(secondsLeft, generatedPattern) {
     var maxRepetition = Math.floor(timeLeft / selectedSwim.time);
 
     // attempt to keep max length 200 or less
-    maxRepetition = maxRepetition * selectedSwim.interval > 8 ? Math.floor(8 / selectedSwim.interval) : maxRepetition;
+    maxRepetition = maxRepetition * selectedSwim.interval > 40 ? Math.floor(40 / selectedSwim.interval) : maxRepetition;
     var intervalLength = _.random(1, maxRepetition);
     var secondsToAdd = selectedSwim.time * intervalLength;
 
