@@ -191,41 +191,62 @@ describe('Workout Components', () => {
             let tdCalled = false;
             let geCalled = false;
 
-            // Define expected responses locally without relying on spies from mockMainSetDefinitionsForFallback
-            const localTdResponse = (es) => ({
-                sets: [`THRESHOLD_DEVELOPMENT tiny set (${es})`],
-                mainSetTotalDist: 50,
-                targetPacePer100: mockCssSecondsPer100,
-                descriptiveMessage: `Mocked THRESHOLD_DEVELOPMENT for ${es}`
-            });
-            const localGeResponse = (es, dist, css) => ({
-                sets: [`GENERAL_ENDURANCE fallback set (${es}): ${dist}m @ ${css}s/100`],
-                mainSetTotalDist: dist,
-                targetPacePer100: css,
-                descriptiveMessage: `Mocked GENERAL_ENDURANCE fallback for ${es}`
-            });
+            // Simplified mock responses
+            const simplifiedTdResponse = {
+                sets: ["TD_SET_SIMPLIFIED"],
+                mainSetTotalDist: 50, // Crucial for fallback: < 100
+                targetPacePer100: 90,
+                descriptiveMessage: "TD_MSG_SIMPLIFIED"
+            };
+
+            const simplifiedGeResponse = {
+                sets: ["GE_FALLBACK_SIMPLIFIED"],
+                mainSetTotalDist: 2000, // Assumes remainingDistance is 2000
+                targetPacePer100: 90,
+                descriptiveMessage: "GE_FALLBACK_MSG_SIMPLIFIED"
+            };
 
             const completelyLocalMockDefs = {
-                'THRESHOLD_DEVELOPMENT': (es, /* css, dist */) => { // css, dist were unused as localTdResponse only takes es
+                'THRESHOLD_DEVELOPMENT': (energySystem, css, dist) => {
                     tdCalled = true;
-                    return localTdResponse(es);
+                    // console.log('THRESHOLD_DEVELOPMENT mock called with:', energySystem, css, dist);
+                    // console.log('THRESHOLD_DEVELOPMENT mock returning:', JSON.stringify(simplifiedTdResponse));
+                    return simplifiedTdResponse;
                 },
-                'GENERAL_ENDURANCE': (es, css, dist) => { // css, dist are used by localGeResponse
+                'GENERAL_ENDURANCE': (energySystem, css, dist) => {
                     geCalled = true;
-                    return localGeResponse(es, dist, css);
+                    // console.log('GENERAL_ENDURANCE mock called with:', energySystem, css, dist);
+                    // Construct a response that depends on 'dist' like the original localGeResponse for mainSetTotalDist
+                    const actualGeResponse = {
+                        ...simplifiedGeResponse,
+                        mainSetTotalDist: dist, // Use the actual remaining distance
+                        sets: [`GE_FALLBACK_SIMPLIFIED (${energySystem}): ${dist}m @ ${css}s/100`]
+                    };
+                    // console.log('GENERAL_ENDURANCE mock returning:', JSON.stringify(actualGeResponse));
+                    return actualGeResponse;
                 }
             };
+
+            // These are from the outer scope of the describe block for generateMainSet
+            // const mockEnergySystem = 'EN1';
+            // const mockCssSecondsPer100 = 90;
+            // const mockRemainingDistance = 2000;
+
             const result = generateMainSet(workoutType, mockEnergySystem, mockCssSecondsPer100, mockRemainingDistance, completelyLocalMockDefs);
 
-            expect(tdCalled).to.be.true;
-            expect(geCalled).to.be.true;
+            // console.log('Result from generateMainSet:', JSON.stringify(result));
 
-            // Assertions based on the localGeResponse, as it's the final output after fallback
-            expect(result.sets).to.deep.equal(localGeResponse(mockEnergySystem, mockRemainingDistance, mockCssSecondsPer100).sets);
-            // Check combined descriptive message
-            expect(result.descriptiveMessage).to.include(`Mocked THRESHOLD_DEVELOPMENT for ${mockEnergySystem}`);
-            expect(result.descriptiveMessage).to.include(`(Fallback to general endurance due to low generated distance for selected workout type).`);
-            expect(result.descriptiveMessage).to.include(`Mocked GENERAL_ENDURANCE fallback for ${mockEnergySystem}`);
+            expect(tdCalled, "THRESHOLD_DEVELOPMENT mock should have been called").to.be.true;
+            expect(geCalled, "GENERAL_ENDURANCE mock should have been called").to.be.true;
+
+            // Check against the structure of simplifiedGeResponse, but with dynamic parts
+            expect(result.sets).to.deep.equal([`GE_FALLBACK_SIMPLIFIED (${mockEnergySystem}): ${mockRemainingDistance}m @ ${mockCssSecondsPer100}s/100`]);
+            expect(result.mainSetTotalDist).to.equal(mockRemainingDistance);
+            expect(result.targetPacePer100).to.equal(mockCssSecondsPer100); // Assuming GE mock sets this
+
+            // Check combined descriptive message based on the simplified messages
+            const expectedFallbackMessagePart = "(Fallback to general endurance due to low generated distance for selected workout type).";
+            expect(result.descriptiveMessage).to.equal(simplifiedTdResponse.descriptiveMessage + " " + expectedFallbackMessagePart + " " + simplifiedGeResponse.descriptiveMessage);
         });
 
         it('should NOT fallback to GENERAL_ENDURANCE if specific generator is already GENERAL_ENDURANCE and returns small distance', () => {
