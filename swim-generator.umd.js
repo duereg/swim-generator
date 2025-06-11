@@ -662,11 +662,12 @@
         var currentReps = Math.floor(remainingDistanceForMainSet / currentDist);
         if (currentReps === 0) continue;
         var maxRepsForCurrentDist = void 0;
-        if (currentDist === 500) maxRepsForCurrentDist = 8;else if (currentDist === 600) maxRepsForCurrentDist = 8; // e.g. 8x600 is 4800
-        else if (currentDist === 700) maxRepsForCurrentDist = 7; // e.g. 7x700 is 4900
-        else if (currentDist === 800) maxRepsForCurrentDist = 6; // e.g. 6x800 is 4800
-        else if (currentDist === 900) maxRepsForCurrentDist = 5; // e.g. 5x900 is 4500
-        else if (currentDist === 1000) maxRepsForCurrentDist = 5; // e.g. 5x1000 is 5000
+        if (currentDist === 500) maxRepsForCurrentDist = 12; // e.g. 12x500 is 6000
+        else if (currentDist === 600) maxRepsForCurrentDist = 10; // e.g. 10x600 is 6000
+        else if (currentDist === 700) maxRepsForCurrentDist = 8; // e.g. 8x700 is 5600
+        else if (currentDist === 800) maxRepsForCurrentDist = 7; // e.g. 7x800 is 5600
+        else if (currentDist === 900) maxRepsForCurrentDist = 6; // e.g. 6x900 is 5400
+        else if (currentDist === 1000) maxRepsForCurrentDist = 6; // e.g. 6x1000 is 6000
         else maxRepsForCurrentDist = 1; // Should not happen with the defined list
 
         currentReps = Math.min(currentReps, maxRepsForCurrentDist);
@@ -731,8 +732,6 @@
     };
   };
 
-  // Content of lib/data/mainSets/THRESHOLD_SUSTAINED.js to be updated:
-
   var THRESHOLD_SUSTAINED = function THRESHOLD_SUSTAINED(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
     var sets = [];
     var mainSetTotalDist = 0;
@@ -754,39 +753,39 @@
       rest: 'r20"',
       requiredDist: 10 * 200,
       paceDesc: 'CSS'
-    }, {
-      id: '5x400',
-      reps: 5,
-      dist: 400,
-      rest: 'r40"',
-      requiredDist: 5 * 400,
-      paceDesc: 'CSS'
-    }, {
-      id: '3x600',
-      reps: 3,
-      dist: 600,
-      rest: 'r60"',
-      requiredDist: 3 * 600,
-      paceDesc: 'CSS'
     },
-    // For 800s and 1000s, allow variable reps, e.g., 2-3 reps
-    // Max total yardage around 2000-3000 for these longer reps
+    // For longer intervals, allow variable reps
     {
+      id: 'Nx400',
+      baseDist: 400,
+      rest: 'r40"',
+      maxReps: 18,
+      paceDesc: 'CSS'
+    }, {
+      id: 'Nx500',
+      baseDist: 500,
+      rest: 'r50"',
+      maxReps: 14,
+      paceDesc: 'CSS'
+    }, {
+      id: 'Nx600',
+      baseDist: 600,
+      rest: 'r60"',
+      maxReps: 12,
+      paceDesc: 'CSS'
+    }, {
       id: 'Nx800',
       baseDist: 800,
       rest: 'r90"',
       maxReps: 8,
       paceDesc: 'CSS'
-    },
-    // 3x800=2400
-    {
+    }, {
       id: 'Nx1000',
       baseDist: 1000,
       rest: 'r90"',
       maxReps: 6,
       paceDesc: 'CSS'
-    } // 2x1000=2000
-    ];
+    }];
     var bestFitSet = null;
     var maxAchievedDistance = 0;
     for (var _i = 0, _en2SetPatterns = en2SetPatterns; _i < _en2SetPatterns.length; _i++) {
@@ -844,12 +843,12 @@
       if (remainingDistanceForMainSet >= 200) {
         // Try 200s first
         fallbackDist = 200;
-        fallbackReps = Math.min(Math.floor(remainingDistanceForMainSet / 200), 9); // Cap at 9x200 (less than 10x200 pattern)
+        fallbackReps = Math.min(Math.floor(remainingDistanceForMainSet / 200), 40);
         fallbackRest = 'r20"';
       } else {
         // Must be 100s
         fallbackDist = 100;
-        fallbackReps = Math.min(Math.floor(remainingDistanceForMainSet / 100), 17); // Cap at 17x100
+        fallbackReps = Math.min(Math.floor(remainingDistanceForMainSet / 100), 60);
         fallbackRest = 'r10"';
       }
       if (fallbackReps > 0) {
@@ -888,8 +887,6 @@
     };
   };
 
-  // Content of lib/data/mainSets/THRESHOLD_DEVELOPMENT.js to be updated:
-
   var THRESHOLD_DEVELOPMENT = function THRESHOLD_DEVELOPMENT(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
     var sets = [];
     var mainSetTotalDist = 0;
@@ -904,38 +901,30 @@
       maxReps: 6,
       rest: 'r120"',
       paceDesc: 'CSS -1-2s'
-    },
-    // 4x1000 = 4000
-    {
+    }, {
       idFormat: 'Nx800',
       baseDist: 800,
       maxReps: 8,
       rest: 'r90"',
       paceDesc: 'CSS -1-2s'
-    },
-    // 5x800 = 4000
-    // Existing fixed patterns (can be ordered by preference or required distance)
-    {
-      id: '4x600',
-      reps: 4,
-      dist: 600,
-      rest: 'r90"',
-      requiredDist: 4 * 600,
-      paceDesc: 'CSS -1-2s'
     }, {
-      id: '4x500',
-      reps: 4,
-      dist: 500,
+      idFormat: 'Nx400',
+      baseDist: 400,
+      rest: 'r50"',
+      maxReps: 18,
+      paceDesc: 'CSS'
+    }, {
+      idFormat: 'Nx500',
+      baseDist: 500,
       rest: 'r60"',
-      requiredDist: 4 * 500,
-      paceDesc: 'CSS -1-2s'
+      maxReps: 14,
+      paceDesc: 'CSS'
     }, {
-      id: '4x400',
-      reps: 4,
-      dist: 400,
-      rest: 'r45"',
-      requiredDist: 4 * 400,
-      paceDesc: 'CSS -1-2s'
+      idFormat: 'Nx600',
+      baseDist: 600,
+      rest: 'r90"',
+      maxReps: 12,
+      paceDesc: 'CSS'
     }];
     var bestFitSet = null;
     var maxAchievedDistance = 0;
@@ -1303,7 +1292,7 @@
     var sets = [];
     var mainSetTotalDist = 0;
     var targetPacePer100 = cssSecondsPer100;
-    var generalDistances = [400, 300, 200, 100, 50];
+    var generalDistances = [500, 400, 300, 200, 100, 50];
     var bestRepDist = 0;
     var bestNumReps = 0;
     var smallestRemainder = Infinity;
