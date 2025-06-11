@@ -894,20 +894,8 @@
     var targetPacePer100 = cssSecondsPer100 - 1 - Math.random(); // Results in css - 1.0 to css - 1.999...
 
     var en3SetPatterns = [
-    // New Nx patterns for longer distances
+    // New Nx patterns for longer distancess
     {
-      idFormat: 'Nx1000',
-      baseDist: 1000,
-      maxReps: 6,
-      rest: 'r120"',
-      paceDesc: 'CSS -1-2s'
-    }, {
-      idFormat: 'Nx800',
-      baseDist: 800,
-      maxReps: 8,
-      rest: 'r90"',
-      paceDesc: 'CSS -1-2s'
-    }, {
       idFormat: 'Nx400',
       baseDist: 400,
       rest: 'r50"',
