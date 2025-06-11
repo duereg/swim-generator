@@ -114,6 +114,18 @@ describe('generateWorkout Distance Adherence Tests', () => {
         // If ENDURANCE_BASE.js caps at 5000, then 5000 is within 6000 +/- 30% (4200 to 7800)
         runAdherenceTest(6000, 'EN1', '1:40', 'ENDURANCE_BASE', 0.30, 1); // iterations = 1
     });
+
+    it('should attempt to generate a CSS workout close to 5000 yards (EN3)', () => {
+        runAdherenceTest(5000, 'EN3', '1:25', 'THRESHOLD_DEVELOPMENT', 0.25, 1); // iterations = 1 for faster initial check
+    });
+
+    it('should attempt to generate a CSS workout close to 5000 yards (SP1)', () => {
+        runAdherenceTest(5000, 'SP1', '1:15', 'SPEED_ENDURANCE', 0.25, 1); // iterations = 1
+    });
+
+    it('should attempt to generate a CSS workout close to 5000 yards (SP2)', () => {
+        runAdherenceTest(5000, 'SP2', '1:10', 'MAX_SPRINT', 0.25, 1); // iterations = 1
+    });
 });
 
 describe('generateWorkout Integration Tests', () => {
