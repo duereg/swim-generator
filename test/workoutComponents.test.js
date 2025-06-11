@@ -186,7 +186,7 @@ describe('Workout Components', () => {
             expect(result.descriptiveMessage).to.be.a('string');
         });
 
-        it.skip('should fallback to GENERAL_ENDURANCE if specific generator returns too small distance and not already GENERAL_ENDURANCE', () => {
+        it('should fallback to GENERAL_ENDURANCE if specific generator returns too small distance and not already GENERAL_ENDURANCE', () => {
             const workoutType = 'THRESHOLD_DEVELOPMENT';
             let tdCalled = false;
             let geCalled = false;
@@ -228,7 +228,7 @@ describe('Workout Components', () => {
             expect(result.descriptiveMessage).to.include(`Mocked GENERAL_ENDURANCE fallback for ${mockEnergySystem}`);
         });
 
-        it.skip('should NOT fallback to GENERAL_ENDURANCE if specific generator is already GENERAL_ENDURANCE and returns small distance', () => {
+        it('should NOT fallback to GENERAL_ENDURANCE if specific generator is already GENERAL_ENDURANCE and returns small distance', () => {
             const workoutType = 'GENERAL_ENDURANCE';
             let geTinyCalled = false;
             const mockGeTinyDef = {
