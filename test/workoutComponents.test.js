@@ -207,7 +207,7 @@ describe('Workout Components', () => {
             };
 
             const completelyLocalMockDefs = {
-                'THRESHOLD_DEVELOPMENT': (energySystem, css, dist) => {
+                'THRESHOLD_DEVELOPMENT': (_energySystem, _css, _dist) => {
                     tdCalled = true;
                     // console.log('THRESHOLD_DEVELOPMENT mock called with:', energySystem, css, dist);
                     // console.log('THRESHOLD_DEVELOPMENT mock returning:', JSON.stringify(simplifiedTdResponse));
