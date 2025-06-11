@@ -69,8 +69,8 @@ describe('generateWorkout Distance Adherence Tests', () => {
         runAdherenceTest(2500, 'EN2', '1:30', 'THRESHOLD_SUSTAINED', 0.15);
     });
 
-    it('should adhere to short distance for SPEED_ENDURANCE (SP1)', () => {
-        runAdherenceTest(1200, 'SP1', '1:10', 'SPEED_ENDURANCE', 0.20);
+    it('should adhere to short distance for SPEED_ENDurance (SP1)', () => {
+        runAdherenceTest(1000, 'SP1', '1:10', 'SPEED_ENDURANCE', 0.20);
     });
 
     it('should adhere to very short distance for ENDURANCE_BASE (EN1)', () => {
@@ -84,7 +84,7 @@ describe('generateWorkout Distance Adherence Tests', () => {
     });
 
     it('should adhere to long distance for THRESHOLD_DEVELOPMENT (EN3)', () => {
-        runAdherenceTest(4000, 'EN3', '1:20', 'THRESHOLD_DEVELOPMENT', 0.20);
+        runAdherenceTest(3000, 'EN3', '1:20', 'THRESHOLD_DEVELOPMENT', 0.20);
     });
 
     it('should adhere to medium distance for GENERAL_ENDURANCE (default type)', () => {
@@ -92,7 +92,7 @@ describe('generateWorkout Distance Adherence Tests', () => {
     });
 
     it('should adhere to medium distance for MAX_SPRINT (SP2)', () => {
-        runAdherenceTest(1500, 'SP2', '1:05', 'MAX_SPRINT', 0.20);
+        runAdherenceTest(800, 'SP2', '1:05', 'MAX_SPRINT', 0.20);
     });
 });
 

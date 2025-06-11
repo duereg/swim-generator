@@ -215,7 +215,7 @@ describe('Workout Components', () => {
                     return localGeResponse(es, dist, css);
                 }
             };
-            const result = generateMainSet(workoutType, mockEnergySystem, mockRemainingDistance, completelyLocalMockDefs);
+            const result = generateMainSet(workoutType, mockEnergySystem, mockCssSecondsPer100, mockRemainingDistance, completelyLocalMockDefs);
 
             expect(tdCalled).to.be.true;
             expect(geCalled).to.be.true;
@@ -242,7 +242,7 @@ describe('Workout Components', () => {
                     };
                 }
             };
-            const result = generateMainSet(workoutType, mockEnergySystem, mockRemainingDistance, mockGeTinyDef);
+            const result = generateMainSet(workoutType, mockEnergySystem, mockCssSecondsPer100, mockRemainingDistance, mockGeTinyDef);
 
             expect(geTinyCalled).to.be.true;
             expect(result.mainSetTotalDist).to.equal(50);
