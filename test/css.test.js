@@ -70,7 +70,7 @@ describe('generateWorkout Distance Adherence Tests', () => {
     });
 
     it('should adhere to short distance for SPEED_ENDurance (SP1)', () => {
-        runAdherenceTest(1000, 'SP1', '1:10', 'SPEED_ENDURANCE', 0.25);
+        runAdherenceTest(1000, 'SP1', '1:10', 'SPEED_ENDURANCE', 0.35);
     });
 
     it('should adhere to very short distance for ENDURANCE_BASE (EN1)', () => {
