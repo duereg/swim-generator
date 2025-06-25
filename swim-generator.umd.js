@@ -471,6 +471,59 @@
   	}
   ];
 
+  function _arrayLikeToArray(r, a) {
+    (null == a || a > r.length) && (a = r.length);
+    for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e];
+    return n;
+  }
+  function _createForOfIteratorHelper(r, e) {
+    var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"];
+    if (!t) {
+      if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e) {
+        t && (r = t);
+        var n = 0,
+          F = function () {};
+        return {
+          s: F,
+          n: function () {
+            return n >= r.length ? {
+              done: true
+            } : {
+              done: false,
+              value: r[n++]
+            };
+          },
+          e: function (r) {
+            throw r;
+          },
+          f: F
+        };
+      }
+      throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+    }
+    var o,
+      a = true,
+      u = false;
+    return {
+      s: function () {
+        t = t.call(r);
+      },
+      n: function () {
+        var r = t.next();
+        return a = r.done, r;
+      },
+      e: function (r) {
+        u = true, o = r;
+      },
+      f: function () {
+        try {
+          a || null == t.return || t.return();
+        } finally {
+          if (u) throw o;
+        }
+      }
+    };
+  }
   function _defineProperty(e, r, t) {
     return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
       value: t,
@@ -513,6 +566,13 @@
   function _toPropertyKey(t) {
     var i = _toPrimitive(t, "string");
     return "symbol" == typeof i ? i : i + "";
+  }
+  function _unsupportedIterableToArray(r, a) {
+    if (r) {
+      if ("string" == typeof r) return _arrayLikeToArray(r, a);
+      var t = {}.toString.call(r).slice(8, -1);
+      return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0;
+    }
   }
 
   // Warmup options based on various sources [2, 5, 7, 8, 11, 13, 15, 17, 19, 20]
@@ -634,554 +694,419 @@
   } //[13]
   ];
 
-  // Content of lib/data/mainSets/ENDURANCE_BASE.js to be updated:
+  // lib/workoutGenerator.js - V3_SCHEMA_UPDATE_MARKER_GENERATOR
 
-  var ENDURANCE_BASE = function ENDURANCE_BASE(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
-    var sets = [];
-    var mainSetTotalDist = 0;
-    // New pace: CSS + 5-15 seconds
-    var targetPacePer100 = cssSecondsPer100 + 5 + Math.random() * 10;
-    if (remainingDistanceForMainSet < 500) {
-      return {
-        sets: sets,
-        mainSetTotalDist: 0,
-        targetPacePer100: targetPacePer100,
-        descriptiveMessage: "EN1: Too short. Min rep distance 500, available: ".concat(remainingDistanceForMainSet, ".")
-      };
+  // --- Helper Functions ---
+
+  function calculateTargetPace(cssSecondsPer100, paceConfig) {
+    if (!paceConfig || typeof cssSecondsPer100 !== 'number') {
+      return cssSecondsPer100;
     }
-    var allPossibleRepDistances = [500, 600, 700, 800, 900, 1000];
+    var pace = cssSecondsPer100;
+    var offset = paceConfig.offset || 0;
+    var randomRange = paceConfig.randomRange || 0;
+    var randomComponent = 0;
+    if (randomRange > 0) {
+      randomComponent = Math.random() * randomRange;
+    }
+    var totalAdjustment = offset + randomComponent;
+    if (paceConfig.operator === "+") {
+      pace += totalAdjustment;
+    } else if (paceConfig.operator === "-") {
+      pace -= totalAdjustment;
+    }
+    return pace;
+  }
+  function formatDescriptiveMessage(template, params) {
+    if (!template) return "No descriptive message template provided.";
+    var message = template;
+    for (var key in params) {
+      if (params[key] !== undefined) {
+        message = message.replace(new RegExp("{".concat(key, "}"), 'g'), params[key]);
+      }
+    }
+    message = message.replace(/{[^}]+}/g, '');
+    return message.trim();
+  }
+  function formatSetString(setInfo, energySystem, formatConfig) {
+    var structure = formatConfig.baseStructure || "{reps}x{dist} {activity} ({energySystem} focus) {rest}";
+    structure = structure.replace("{reps}", setInfo.reps);
+    structure = structure.replace("{dist}", setInfo.dist);
+    structure = structure.replace("{activity}", setInfo.activity || formatConfig.defaultActivity || "swim");
+    structure = structure.replace("{energySystem}", energySystem);
+    structure = structure.replace("{rest}", setInfo.restString || "");
+    structure = structure.replace("{paceDesc}", setInfo.paceDesc || "");
+    structure = structure.replace("{notes}", setInfo.notes || ""); // Added notes
+    return structure.trim().replace(/\s\s+/g, ' ').replace(/\s\(@/g, ' @').replace(/\s\(\s*,/g, ' (').replace(/,\s*\)/g, ')').replace(/\(\s*\)/g, ''); // Clean up
+  }
+  function getRestString(repDist, restConfig, patternRestValue) {
+    if (!restConfig) return 'r10"';
+    switch (restConfig.type) {
+      case "fixed":
+        return restConfig.value;
+      case "customFunction":
+        if (typeof restConfig.customFunction === 'function') return restConfig.customFunction(repDist);
+        return 'r10"';
+      case "distanceBased":
+        {
+          var sortedKeys = Object.keys(restConfig.values).filter(function (k) {
+            return k !== 'default';
+          }).map(Number).sort(function (a, b) {
+            return b - a;
+          });
+          var _iterator = _createForOfIteratorHelper(sortedKeys),
+            _step;
+          try {
+            for (_iterator.s(); !(_step = _iterator.n()).done;) {
+              var keyDist = _step.value;
+              if (repDist >= keyDist) return restConfig.values[keyDist];
+            }
+          } catch (err) {
+            _iterator.e(err);
+          } finally {
+            _iterator.f();
+          }
+          return restConfig.values["default"] || 'r10"';
+        }
+      case "patternDefined":
+        return patternRestValue || "";
+      default:
+        return 'r10"';
+    }
+  }
+
+  // --- Strategy Implementations ---
+
+  function generateSet_BestFitSingleRepetition(remainingDistance, strategyConfig, restConfig, energySystem, setFormattingConfig) {
+    var setDefinitions = strategyConfig.setDefinitions,
+      selectionPreference = strategyConfig.selectionPreference; // Use setDefinitions
     var bestOption = {
-      dist: 0,
+      setDef: null,
       reps: 0,
       totalYardage: 0,
-      is500: false
+      isPreferredShorter: false
     };
-    for (var _i = 0, _allPossibleRepDistan = allPossibleRepDistances; _i < _allPossibleRepDistan.length; _i++) {
-      var currentDist = _allPossibleRepDistan[_i];
-      if (remainingDistanceForMainSet >= currentDist) {
-        var currentReps = Math.floor(remainingDistanceForMainSet / currentDist);
-        if (currentReps === 0) continue;
-        var maxRepsForCurrentDist = void 0;
-        if (currentDist === 500) maxRepsForCurrentDist = 12; // e.g. 12x500 is 6000
-        else if (currentDist === 600) maxRepsForCurrentDist = 10; // e.g. 10x600 is 6000
-        else if (currentDist === 700) maxRepsForCurrentDist = 8; // e.g. 8x700 is 5600
-        else if (currentDist === 800) maxRepsForCurrentDist = 7; // e.g. 7x800 is 5600
-        else if (currentDist === 900) maxRepsForCurrentDist = 6; // e.g. 6x900 is 5400
-        else if (currentDist === 1000) maxRepsForCurrentDist = 6; // e.g. 6x1000 is 6000
-        else maxRepsForCurrentDist = 1; // Should not happen with the defined list
-
-        currentReps = Math.min(currentReps, maxRepsForCurrentDist);
-        if (currentReps > 0) {
-          var currentTotalYardage = currentReps * currentDist;
-          var isCurrentDist500 = currentDist === 500;
-          if (currentTotalYardage > bestOption.totalYardage) {
-            bestOption = {
-              dist: currentDist,
-              reps: currentReps,
-              totalYardage: currentTotalYardage,
-              is500: isCurrentDist500
-            };
-          } else if (currentTotalYardage === bestOption.totalYardage) {
-            if (!bestOption.is500 && isCurrentDist500) {
-              // Prefer 500s if yardage is same
+    var _iterator2 = _createForOfIteratorHelper(setDefinitions),
+      _step2;
+    try {
+      for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+        var setDef = _step2.value;
+        // Iterate over setDefinitions
+        var currentDist = setDef.distance;
+        if (setDef.repScheme.type === "dynamic" && remainingDistance >= currentDist) {
+          var currentReps = Math.floor(remainingDistance / currentDist);
+          if (currentReps === 0) continue;
+          var maxReps = setDef.repScheme.maxReps || Infinity;
+          currentReps = Math.min(currentReps, maxReps);
+          if (setDef.repScheme.minReps) {
+            currentReps = Math.max(currentReps, setDef.repScheme.minReps);
+            if (currentReps * currentDist > remainingDistance) continue; // Not enough for minReps
+          }
+          if (currentReps > 0) {
+            var currentTotalYardage = currentReps * currentDist;
+            var isCurrentDistPreferredShorter = selectionPreference.shorterRepValue && currentDist === selectionPreference.shorterRepValue;
+            if (currentTotalYardage > bestOption.totalYardage) {
               bestOption = {
-                dist: currentDist,
+                setDef: setDef,
                 reps: currentReps,
                 totalYardage: currentTotalYardage,
-                is500: isCurrentDist500
+                isPreferredShorter: isCurrentDistPreferredShorter
               };
-            } else if (bestOption.is500 == isCurrentDist500 && currentReps > bestOption.reps) {
-              // If 500-status is same, prefer more reps
-              bestOption = {
-                dist: currentDist,
-                reps: currentReps,
-                totalYardage: currentTotalYardage,
-                is500: isCurrentDist500
-              };
+            } else if (currentTotalYardage === bestOption.totalYardage) {
+              if (selectionPreference.tiebreakYardage === "preferShorterRepIfSameYardageThenMoreReps") {
+                if (!bestOption.isPreferredShorter && isCurrentDistPreferredShorter) {
+                  bestOption = {
+                    setDef: setDef,
+                    reps: currentReps,
+                    totalYardage: currentTotalYardage,
+                    isPreferredShorter: isCurrentDistPreferredShorter
+                  };
+                } else if (bestOption.isPreferredShorter === isCurrentDistPreferredShorter && currentReps > bestOption.reps) {
+                  bestOption = {
+                    setDef: setDef,
+                    reps: currentReps,
+                    totalYardage: currentTotalYardage,
+                    isPreferredShorter: isCurrentDistPreferredShorter
+                  };
+                }
+              }
             }
           }
         }
       }
+    } catch (err) {
+      _iterator2.e(err);
+    } finally {
+      _iterator2.f();
     }
-    var en1RepDist = bestOption.dist;
-    var numEn1Reps = bestOption.reps;
-    if (numEn1Reps > 0 && en1RepDist > 0) {
-      // Fixed rest
-      var en1Rest = 'r60"';
-      sets.push("".concat(numEn1Reps, "x").concat(en1RepDist, " ").concat(energySystem, " focus swim/kick ").concat(en1Rest));
-      mainSetTotalDist = numEn1Reps * en1RepDist;
-    } else {
-      // This case should ideally be minimal if remainingDistanceForMainSet >= 500
-      mainSetTotalDist = 0;
-    }
-    var descriptiveMessage;
-    if (mainSetTotalDist > 0) {
-      descriptiveMessage = "EN1: ".concat(numEn1Reps, "x").concat(en1RepDist, " (").concat(energySystem, "), CSS +5-15s/100m pace guide, 60\" rest.");
-    } else if (remainingDistanceForMainSet < 500) {
-      // Should be caught at the top
-      descriptiveMessage = "EN1: Too short. Min rep distance 500, available: ".concat(remainingDistanceForMainSet, ".");
-    } else {
-      // remainingDistanceForMainSet >= 500 but no suitable sets found (highly unlikely with the logic)
-      descriptiveMessage = "EN1: Could not fit EN1 reps for ".concat(energySystem, ". Available: ").concat(remainingDistanceForMainSet, ".");
-    }
-    return {
-      sets: sets,
-      mainSetTotalDist: mainSetTotalDist,
-      targetPacePer100: targetPacePer100,
-      descriptiveMessage: descriptiveMessage
-    };
-  };
-
-  var THRESHOLD_SUSTAINED = function THRESHOLD_SUSTAINED(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
-    var sets = [];
-    var mainSetTotalDist = 0;
-    // New pace: At CSS
-    var targetPacePer100 = cssSecondsPer100;
-    console.log('--- THRESHOLD_SUSTAINED ---');
-    console.log('remainingDistanceForMainSet:', remainingDistanceForMainSet);
-    var en2SetPatterns = [
-    // Ordered by a rough preference or commonality, can be adjusted
-    {
-      id: '18x100',
-      reps: 18,
-      dist: 100,
-      rest: 'r10"',
-      requiredDist: 18 * 100,
-      paceDesc: 'CSS'
-    }, {
-      id: '10x200',
-      reps: 10,
-      dist: 200,
-      rest: 'r20"',
-      requiredDist: 10 * 200,
-      paceDesc: 'CSS'
-    },
-    // For longer intervals, allow variable reps
-    {
-      id: 'Nx400',
-      baseDist: 400,
-      rest: 'r40"',
-      maxReps: 18,
-      paceDesc: 'CSS'
-    }, {
-      id: 'Nx500',
-      baseDist: 500,
-      rest: 'r50"',
-      maxReps: 14,
-      paceDesc: 'CSS'
-    }, {
-      id: 'Nx600',
-      baseDist: 600,
-      rest: 'r60"',
-      maxReps: 12,
-      paceDesc: 'CSS'
-    }, {
-      id: 'Nx800',
-      baseDist: 800,
-      rest: 'r90"',
-      maxReps: 8,
-      paceDesc: 'CSS'
-    }, {
-      id: 'Nx1000',
-      baseDist: 1000,
-      rest: 'r90"',
-      maxReps: 6,
-      paceDesc: 'CSS'
-    }];
-    console.log('en2SetPatterns:', JSON.stringify(en2SetPatterns.map(function (p) {
-      return p.id;
-    })));
-    var viablePatterns = [];
-    for (var _i = 0, _en2SetPatterns = en2SetPatterns; _i < _en2SetPatterns.length; _i++) {
-      var pattern = _en2SetPatterns[_i];
-      if (pattern.baseDist) {
-        // For NxDist patterns
-        if (remainingDistanceForMainSet >= pattern.baseDist) {
-          var numReps = Math.floor(remainingDistanceForMainSet / pattern.baseDist);
-          numReps = Math.min(numReps, pattern.maxReps);
-          if (numReps > 0) {
-            var currentSetTotalDist = numReps * pattern.baseDist;
-            viablePatterns.push({
-              reps: numReps,
-              dist: pattern.baseDist,
-              rest: pattern.rest,
-              totalDist: currentSetTotalDist,
-              paceDesc: pattern.paceDesc,
-              id: "".concat(numReps, "x").concat(pattern.baseDist)
-            });
-          }
-        }
-      } else {
-        // For fixed rep x dist patterns
-        if (remainingDistanceForMainSet >= pattern.requiredDist) {
-          viablePatterns.push({
-            reps: pattern.reps,
-            dist: pattern.dist,
-            rest: pattern.rest,
-            totalDist: pattern.requiredDist,
-            paceDesc: pattern.paceDesc,
-            id: pattern.id
-          });
-        }
-      }
-    }
-    console.log('Viable patterns after filtering:', JSON.stringify(viablePatterns.map(function (p) {
-      return p.id;
-    })));
-    var bestFitSet = null;
-    var selectionMethod = '';
-    if (viablePatterns.length > 0) {
-      if (viablePatterns.length === 1) {
-        bestFitSet = viablePatterns[0];
-        selectionMethod = 'Single viable pattern';
-      } else {
-        // Prioritize patterns that use more of the available distance
-        var maxDistance = 0;
-        viablePatterns.forEach(function (pattern) {
-          if (pattern.totalDist > maxDistance) {
-            maxDistance = pattern.totalDist;
-          }
-        });
-        var bestDistancePatterns = viablePatterns.filter(function (p) {
-          return p.totalDist === maxDistance;
-        });
-        if (bestDistancePatterns.length === 1) {
-          bestFitSet = bestDistancePatterns[0];
-          selectionMethod = 'Single best distance pattern';
-        } else {
-          // If multiple patterns achieve the same max distance, pick one randomly
-          var randomIndex = Math.floor(Math.random() * bestDistancePatterns.length);
-          bestFitSet = bestDistancePatterns[randomIndex];
-          selectionMethod = "Randomly selected from ".concat(bestDistancePatterns.length, " best distance patterns");
-        }
-      }
-    } else {
-      selectionMethod = 'Fallback logic initiated';
-      // Fallback: if no specific pattern fits, try to construct a simpler set.
-      // E.g., if remaining is 1200, 18x100 (1800) is too much.
-      // Perhaps multiple shorter sets or a smaller version of one.
-      // The guidelines are specific about the set structures.
-      // If remainingDistanceForMainSet is too small for any of these, it produces no set.
-      // Let's try a simpler fallback: if less than the smallest full set (1800), try to do multiples of 100s or 200s at CSS.
-      if (!bestFitSet && remainingDistanceForMainSet >= 100) {
-        var fallbackDist = 0,
-          fallbackReps = 0,
-          fallbackRest = '',
-          fallbackTotal = 0;
-        if (remainingDistanceForMainSet >= 200) {
-          // Try 200s first
-          fallbackDist = 200;
-          fallbackReps = Math.min(Math.floor(remainingDistanceForMainSet / 200), 40);
-          fallbackRest = 'r20"';
-          selectionMethod += ' -> Attempting fallback with 200s';
-        } else {
-          // Must be 100s
-          fallbackDist = 100;
-          fallbackReps = Math.min(Math.floor(remainingDistanceForMainSet / 100), 60);
-          fallbackRest = 'r10"';
-          selectionMethod += ' -> Attempting fallback with 100s';
-        }
-        if (fallbackReps > 0) {
-          fallbackTotal = fallbackReps * fallbackDist;
-          if (fallbackTotal > 0) {
-            // Ensure it's a meaningful set
-            bestFitSet = {
-              reps: fallbackReps,
-              dist: fallbackDist,
-              rest: fallbackRest,
-              totalDist: fallbackTotal,
-              paceDesc: 'CSS',
-              id: "".concat(fallbackReps, "x").concat(fallbackDist, " (fallback)")
-            };
-            selectionMethod += " -> Selected fallback: ".concat(bestFitSet.id);
-          } else {
-            selectionMethod += ' -> Fallback resulted in no meaningful set (totalDist <=0)';
-          }
-        } else {
-          selectionMethod += ' -> Fallback resulted in no meaningful set (fallbackReps <=0)';
-        }
-      } else {
-        if (bestFitSet) {
-          // This case should ideally not be reached if !bestFitSet is the entry condition
-          selectionMethod += ' -> Fallback logic skipped (bestFitSet already found, unexpected)';
-        } else if (remainingDistanceForMainSet < 100) {
-          selectionMethod += ' -> Fallback logic skipped (remainingDistance < 100)';
-        } else {
-          selectionMethod += ' -> Fallback logic skipped (conditions not met, this is unexpected if viablePatterns was empty)';
-        }
-      }
-    }
-    console.log('Pattern selection method:', selectionMethod);
-    console.log('Final bestFitSet:', bestFitSet ? JSON.stringify(bestFitSet) : 'null');
-    var descriptiveMessage;
-    if (bestFitSet) {
-      sets.push("".concat(bestFitSet.reps, "x").concat(bestFitSet.dist, " ").concat(energySystem, " focus swim @ ").concat(bestFitSet.paceDesc, " ").concat(bestFitSet.rest));
-      mainSetTotalDist = bestFitSet.totalDist;
-      descriptiveMessage = "EN2: ".concat(bestFitSet.id, " (").concat(energySystem, ") @ CSS.");
-    } else {
-      mainSetTotalDist = 0;
-      if (remainingDistanceForMainSet < 100) {
-        descriptiveMessage = "EN2: Too short for EN2 sets. Available: ".concat(remainingDistanceForMainSet, ".");
-      } else {
-        descriptiveMessage = "EN2: Could not fit standard EN2 set for ".concat(energySystem, ". Available: ").concat(remainingDistanceForMainSet, ".");
-      }
-    }
-    console.log('Descriptive message:', descriptiveMessage);
-    console.log('--- END THRESHOLD_SUSTAINED ---');
-    return {
-      sets: sets,
-      mainSetTotalDist: mainSetTotalDist,
-      targetPacePer100: targetPacePer100,
-      descriptiveMessage: descriptiveMessage
-    };
-  };
-
-  var THRESHOLD_DEVELOPMENT = function THRESHOLD_DEVELOPMENT(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
-    var sets = [];
-    var mainSetTotalDist = 0;
-    // New pace: CSS - 1 to 2 seconds
-    var targetPacePer100 = cssSecondsPer100 - 1 - Math.random(); // Results in css - 1.0 to css - 1.999...
-
-    var en3SetPatterns = [
-    // New Nx patterns for longer distancess
-    {
-      idFormat: 'Nx400',
-      baseDist: 400,
-      rest: 'r50"',
-      maxReps: 18,
-      paceDesc: 'CSS'
-    }, {
-      idFormat: 'Nx500',
-      baseDist: 500,
-      rest: 'r60"',
-      maxReps: 14,
-      paceDesc: 'CSS'
-    }, {
-      idFormat: 'Nx600',
-      baseDist: 600,
-      rest: 'r90"',
-      maxReps: 12,
-      paceDesc: 'CSS'
-    }];
-    var bestFitSet = null;
-    var maxAchievedDistance = 0;
-    for (var _i = 0, _en3SetPatterns = en3SetPatterns; _i < _en3SetPatterns.length; _i++) {
-      var pattern = _en3SetPatterns[_i];
-      if (pattern.baseDist) {
-        // For NxDist patterns (800, 1000)
-        if (remainingDistanceForMainSet >= pattern.baseDist) {
-          var numReps = Math.floor(remainingDistanceForMainSet / pattern.baseDist);
-          numReps = Math.min(numReps, pattern.maxReps);
-          if (numReps > 0) {
-            var currentSetTotalDist = numReps * pattern.baseDist;
-            if (currentSetTotalDist > maxAchievedDistance) {
-              maxAchievedDistance = currentSetTotalDist;
-              bestFitSet = {
-                reps: numReps,
-                dist: pattern.baseDist,
-                rest: pattern.rest,
-                totalDist: currentSetTotalDist,
-                paceDesc: pattern.paceDesc,
-                id: "".concat(numReps, "x").concat(pattern.baseDist) // Dynamic ID
-              };
-            }
-          }
-        }
-      } else {
-        // For fixed rep x dist patterns (4x600, 4x500, 4x400)
-        if (remainingDistanceForMainSet >= pattern.requiredDist) {
-          // If it fits and is larger than any previously found NxDist set
-          if (pattern.requiredDist > maxAchievedDistance) {
-            maxAchievedDistance = pattern.requiredDist;
-            bestFitSet = {
-              reps: pattern.reps,
-              dist: pattern.dist,
-              rest: pattern.rest,
-              totalDist: pattern.requiredDist,
-              paceDesc: pattern.paceDesc,
-              id: pattern.id // Fixed ID
-            };
-          }
-        }
-      }
-    }
-
-    // Fallback logic: if remaining distance is less than the smallest fixed set (4x400=1600)
-    // but larger than the smallest single rep (400), try to make a smaller set.
-    // This prioritizes fitting any of the defined patterns first, even if they are large.
-    // If no pattern fits (e.g. remainingDistanceForMainSet is 1200), this fallback kicks in.
-    if (!bestFitSet && remainingDistanceForMainSet >= 400) {
-      var singleRepOptions = [
-      // Keep baseReps for fallback scaling, but try to fill remaining
-      {
-        dist: 600,
-        rest: 'r90"',
-        paceDesc: 'CSS -1-2s',
-        baseReps: 4
-      }, {
-        dist: 500,
-        rest: 'r60"',
-        paceDesc: 'CSS -1-2s',
-        baseReps: 4
-      }, {
-        dist: 400,
-        rest: 'r45"',
-        paceDesc: 'CSS -1-2s',
-        baseReps: 4
-      }];
-      var bestFallbackOption = null;
-      var maxFallbackYardage = 0;
-      for (var _i2 = 0, _singleRepOptions = singleRepOptions; _i2 < _singleRepOptions.length; _i2++) {
-        var option = _singleRepOptions[_i2];
-        if (remainingDistanceForMainSet >= option.dist) {
-          // Must be able to do at least one rep
-          var _numReps = Math.floor(remainingDistanceForMainSet / option.dist);
-          // For fallback, don't necessarily cap at baseReps, try to use up the distance
-          // but still keep it reasonable, e.g. not more than maxReps of new patterns if applicable
-          // For simplicity here, let's cap at a slightly higher number like 6-8 for fallback
-          _numReps = Math.min(_numReps, 6); // Example cap for fallback reps
-
-          if (_numReps > 0) {
-            var currentYardage = _numReps * option.dist;
-            if (currentYardage > maxFallbackYardage) {
-              maxFallbackYardage = currentYardage;
-              bestFallbackOption = {
-                reps: _numReps,
-                dist: option.dist,
-                rest: option.rest,
-                totalDist: currentYardage,
-                paceDesc: option.paceDesc,
-                id: "".concat(_numReps, "x").concat(option.dist, " (fallback)")
-              };
-            }
-          }
-        }
-      }
-      if (bestFallbackOption) {
-        bestFitSet = bestFallbackOption; // Use this fallback set
-      }
-    }
-    var descriptiveMessage;
-    if (bestFitSet) {
-      sets.push("".concat(bestFitSet.reps, "x").concat(bestFitSet.dist, " ").concat(energySystem, " focus swim @ ").concat(bestFitSet.paceDesc, " ").concat(bestFitSet.rest));
-      mainSetTotalDist = bestFitSet.totalDist; // Use totalDist from the chosen set object
-      descriptiveMessage = "EN3: ".concat(bestFitSet.id, " (").concat(energySystem, ") @ ").concat(bestFitSet.paceDesc, ".");
-    } else {
-      mainSetTotalDist = 0;
-      var minReq = 400; // Smallest single rep distance for any consideration
-      if (remainingDistanceForMainSet < minReq) {
-        descriptiveMessage = "EN3: Too short for EN3 sets (min rep 400). Available: ".concat(remainingDistanceForMainSet, ".");
-      } else {
-        descriptiveMessage = "EN3: Could not fit standard or fallback EN3 set for ".concat(energySystem, ". Available: ").concat(remainingDistanceForMainSet, ".");
-      }
-    }
-    return {
-      sets: sets,
-      mainSetTotalDist: mainSetTotalDist,
-      targetPacePer100: targetPacePer100,
-      descriptiveMessage: descriptiveMessage
-    };
-  };
-
-  // Content of lib/data/mainSets/SPEED_ENDURANCE.js to be updated:
-
-  var sp1RepDistances = [25, 50, 75, 100]; // Valid rep distances for SP1
-  var sp1Drills = ["swim", "kb", "FU", "HUHO"]; // FU = Fast Underwater, HUHO = Hypoxic Hips Out
-
-  // Helper function to get SP1 rest based on rep distance
-  var getSp1Rest = function getSp1Rest(repDist) {
-    var baseRestSeconds;
-    if (repDist === 100) baseRestSeconds = 10; // EN2 rest for 100s
-    else if (repDist === 75) baseRestSeconds = 7.5; // Proportional
-    else if (repDist === 50) baseRestSeconds = 5; // Proportional
-    else if (repDist === 25) baseRestSeconds = 2.5; // Proportional
-    else baseRestSeconds = 5; // Default small rest
-
-    // Double or triple EN2 equivalent rest
-    var multiplier = 2 + Math.random(); // Randomly between 2x and 3x
-    var restSeconds = Math.round(baseRestSeconds * multiplier / 5) * 5; // Round to nearest 5s
-    restSeconds = Math.max(restSeconds, 5); // Minimum 5s
-    if (repDist === 100) restSeconds = Math.max(restSeconds, 20); // Ensure 100s get at least 20s
-
-    return "r".concat(restSeconds, "\"");
-  };
-  var SPEED_ENDURANCE = function SPEED_ENDURANCE(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
-    var sets = [];
-    var mainSetTotalDist = 0;
-    // New pace: CSS - 3 to 5 seconds
-    var targetPacePer100 = cssSecondsPer100 - 3 - Math.random() * 2;
-
-    // SP1 overall set length: 400 to 800yd.
-    // We'll use remainingDistanceForMainSet, but cap it effectively for SP1's typical range.
-    var targetSp1TotalYardage = Math.max(400, Math.min(remainingDistanceForMainSet, 4500));
-    if (remainingDistanceForMainSet < sp1RepDistances[0]) {
-      // Smallest rep is 25
+    if (bestOption.reps > 0 && bestOption.setDef) {
+      var chosenSetDef = bestOption.setDef;
+      var rest = chosenSetDef.rest || getRestString(chosenSetDef.distance, restConfig); // Prioritize setDef.rest
+      var setInfo = {
+        reps: bestOption.reps,
+        dist: chosenSetDef.distance,
+        restString: rest,
+        activity: chosenSetDef.activity || setFormattingConfig.defaultActivity || "swim",
+        paceDesc: chosenSetDef.paceDescription,
+        // Pass through if available
+        notes: chosenSetDef.notes
+      };
       return {
-        sets: sets,
-        mainSetTotalDist: 0,
-        targetPacePer100: targetPacePer100,
-        descriptiveMessage: "SP1: Too short. Min rep 25. Available: ".concat(remainingDistanceForMainSet, ".")
+        generatedSets: [setInfo],
+        totalDistance: bestOption.totalYardage,
+        strategySpecificSummary: "".concat(bestOption.reps, "x").concat(chosenSetDef.distance),
+        restSummary: rest
       };
     }
-    if (targetSp1TotalYardage < sp1RepDistances[0]) {
+    return {
+      generatedSets: [],
+      totalDistance: 0,
+      strategySpecificSummary: "No suitable reps found."
+    };
+  }
+  function generateSet_ClosestFitGeneral(remainingDistance, strategyConfig, restConfig, energySystem, setFormattingConfig) {
+    var setDefinitions = strategyConfig.setDefinitions,
+      minRepDistanceForFallback = strategyConfig.minRepDistanceForFallback,
+      conservativeAdjustment = strategyConfig.conservativeAdjustment; // Use setDefinitions
+    var bestRepDist = 0;
+    var bestNumReps = 0;
+    var smallestRemainder = Infinity;
+    var chosenSetDef = null;
+    var _iterator3 = _createForOfIteratorHelper(setDefinitions),
+      _step3;
+    try {
+      for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+        var setDef = _step3.value;
+        // Iterate over setDefinitions
+        var dist = setDef.distance;
+        if (remainingDistance >= dist) {
+          var currentNumReps = Math.floor(remainingDistance / dist);
+          var currentRemainder = remainingDistance - currentNumReps * dist;
+          if (currentNumReps > 0) {
+            if (currentRemainder < smallestRemainder) {
+              smallestRemainder = currentRemainder;
+              bestRepDist = dist;
+              bestNumReps = currentNumReps;
+              chosenSetDef = setDef;
+            } else if (currentRemainder === smallestRemainder) {
+              if (dist > bestRepDist) {
+                bestRepDist = dist;
+                bestNumReps = currentNumReps;
+                chosenSetDef = setDef;
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      _iterator3.e(err);
+    } finally {
+      _iterator3.f();
+    }
+    if (bestNumReps === 0 && remainingDistance >= minRepDistanceForFallback) {
+      if (remainingDistance >= 50) {
+        bestRepDist = Math.floor(remainingDistance / 50) * 50;
+        if (bestRepDist === 0) bestRepDist = 50;
+      } else {
+        bestRepDist = minRepDistanceForFallback;
+      }
+      if (bestRepDist > 0) bestNumReps = Math.floor(remainingDistance / bestRepDist);
+      if (bestNumReps * bestRepDist > remainingDistance || bestNumReps === 0 && bestRepDist > 0 && remainingDistance >= bestRepDist) {
+        if (remainingDistance >= bestRepDist && bestRepDist > 0) bestNumReps = Math.floor(remainingDistance / bestRepDist);else bestNumReps = 0;
+      }
+      if (bestNumReps > 0) {
+        // Find a matching setDef for fallback or use defaults
+        chosenSetDef = setDefinitions.find(function (sd) {
+          return sd.distance === bestRepDist;
+        }) || {
+          distance: bestRepDist
+        };
+      }
+    }
+    if (bestNumReps > 0 && bestRepDist > 0 && conservativeAdjustment && conservativeAdjustment.enabled) {
+      var calculatedDist = bestNumReps * bestRepDist;
+      if (calculatedDist > remainingDistance * conservativeAdjustment.usageThresholdFactor && bestRepDist >= conservativeAdjustment.minRepDistance && bestNumReps >= conservativeAdjustment.minReps) {
+        bestNumReps--;
+      }
+    }
+    if (bestNumReps > 0 && bestRepDist > 0 && chosenSetDef) {
+      var rest = chosenSetDef.rest || getRestString(bestRepDist, restConfig);
+      var setInfo = {
+        reps: bestNumReps,
+        dist: bestRepDist,
+        restString: rest,
+        activity: chosenSetDef.activity || setFormattingConfig.defaultActivity || "swim",
+        paceDesc: chosenSetDef.paceDescription,
+        notes: chosenSetDef.notes
+      };
       return {
-        sets: sets,
-        mainSetTotalDist: 0,
-        targetPacePer100: targetPacePer100,
-        descriptiveMessage: "SP1: Target yardage too low. Available: ".concat(remainingDistanceForMainSet, ".")
+        generatedSets: [setInfo],
+        totalDistance: bestNumReps * bestRepDist,
+        strategySpecificSummary: "".concat(bestNumReps, "x").concat(bestRepDist),
+        restSummary: rest
       };
     }
-    var numBlocks = Math.max(1, Math.ceil(targetSp1TotalYardage / 800)); // Dynamic blocks, avg ~800yd per block
-
-    var accumulatedDistInSp1Set = 0;
-    var actualRemainingForSp1Blocks = targetSp1TotalYardage;
+    return {
+      generatedSets: [],
+      totalDistance: 0,
+      strategySpecificSummary: "No suitable reps found."
+    };
+  }
+  function generateSet_TargetYardageRepChoice(remainingDistance, strategyConfig, restConfig, energySystem, setFormattingConfig) {
+    var setTargetDistanceMin = strategyConfig.setTargetDistanceMin,
+      setTargetDistanceMaxDefault = strategyConfig.setTargetDistanceMaxDefault,
+      setTargetDistanceMaxCap = strategyConfig.setTargetDistanceMaxCap,
+      setDefinitions = strategyConfig.setDefinitions,
+      repChoiceLogic = strategyConfig.repChoiceLogic;
+    var actualTargetYardage = Math.min(remainingDistance, setTargetDistanceMaxCap);
+    actualTargetYardage = Math.max(actualTargetYardage, setTargetDistanceMin);
+    if (setTargetDistanceMaxDefault) {
+      actualTargetYardage = Math.min(actualTargetYardage, setTargetDistanceMaxDefault);
+    }
+    var availableRepDistances = setDefinitions.map(function (sd) {
+      return sd.distance;
+    }).sort(function (a, b) {
+      return a - b;
+    });
+    if (actualTargetYardage < availableRepDistances[0]) {
+      return {
+        generatedSets: [],
+        totalDistance: 0,
+        strategySpecificSummary: "Target yardage too low for any rep."
+      };
+    }
+    var chosenSetDef = null;
+    var preferredSetDef = setDefinitions.find(function (sd) {
+      return sd.distance === repChoiceLogic.preferDistance;
+    });
+    if (preferredSetDef && actualTargetYardage >= preferredSetDef.distance && actualTargetYardage >= repChoiceLogic.thresholdYardage) {
+      chosenSetDef = preferredSetDef;
+    } else {
+      var sortedAvailableSetDefs = setDefinitions.filter(function (sd) {
+        return actualTargetYardage >= sd.distance;
+      }).sort(function (a, b) {
+        return a.distance - b.distance;
+      });
+      if (sortedAvailableSetDefs.length > 0) {
+        chosenSetDef = sortedAvailableSetDefs[0];
+      }
+    }
+    if (!chosenSetDef) {
+      return {
+        generatedSets: [],
+        totalDistance: 0,
+        strategySpecificSummary: "Could not select rep distance for target."
+      };
+    }
+    var repDist = chosenSetDef.distance;
+    var numReps = Math.floor(actualTargetYardage / repDist);
+    numReps = Math.max(numReps, 1);
+    var currentSetTotalYardage = numReps * repDist;
+    if (currentSetTotalYardage > 0) {
+      var rest = chosenSetDef.rest || getRestString(repDist, restConfig);
+      var setInfo = {
+        reps: numReps,
+        dist: repDist,
+        restString: rest,
+        activity: chosenSetDef.activity || setFormattingConfig.defaultActivity || "sprint",
+        paceDesc: chosenSetDef.paceDescription,
+        notes: chosenSetDef.notes
+      };
+      return {
+        generatedSets: [setInfo],
+        totalDistance: currentSetTotalYardage,
+        strategySpecificSummary: "".concat(numReps, "x").concat(repDist),
+        restSummary: rest
+      };
+    }
+    return {
+      generatedSets: [],
+      totalDistance: 0,
+      strategySpecificSummary: "Calculated zero yardage."
+    };
+  }
+  function generateSet_MultiBlock(remainingDistance, strategyConfig, restConfig) {
+    var setTargetDistanceMin = strategyConfig.setTargetDistanceMin,
+      setTargetDistanceMaxCap = strategyConfig.setTargetDistanceMaxCap,
+      targetYardagePerBlockApprox = strategyConfig.targetYardagePerBlockApprox,
+      setDefinitions = strategyConfig.setDefinitions,
+      drills = strategyConfig.drills,
+      interBlockRest = strategyConfig.interBlockRest;
+    var setsOutput = [];
+    var accumulatedDistInSet = 0;
+    var availableRepDistances = setDefinitions.map(function (sd) {
+      return sd.distance;
+    }).sort(function (a, b) {
+      return a - b;
+    });
+    var smallestRepDist = availableRepDistances[0];
+    var targetOverallYardage = Math.min(remainingDistance, setTargetDistanceMaxCap);
+    targetOverallYardage = Math.max(targetOverallYardage, setTargetDistanceMin);
+    if (targetOverallYardage < smallestRepDist) {
+      return {
+        generatedSets: [],
+        totalDistance: 0,
+        strategySpecificSummary: "Overall target yardage too low."
+      };
+    }
+    var numBlocks = Math.max(1, Math.ceil(targetOverallYardage / targetYardagePerBlockApprox));
+    var remainingForBlocksAllocation = targetOverallYardage;
     var _loop = function _loop() {
-        if (actualRemainingForSp1Blocks < sp1RepDistances[0]) return 0; // break
-        var distForCurrentBlock = Math.floor(actualRemainingForSp1Blocks / (numBlocks - i));
-        if (distForCurrentBlock < sp1RepDistances[0]) return 1; // continue
+        if (remainingForBlocksAllocation <= 0 || accumulatedDistInSet >= targetOverallYardage) return 0; // break
+        if (remainingForBlocksAllocation < smallestRepDist) return 0; // break
+        var distForCurrentBlockTarget = Math.floor(remainingForBlocksAllocation / (numBlocks - i));
+        distForCurrentBlockTarget = Math.min(distForCurrentBlockTarget, remainingForBlocksAllocation);
+        if (distForCurrentBlockTarget < smallestRepDist) return 1; // continue
 
-        // Select rep distance for the block - try to use a mix, or pick one that fits well
-        var repDist = sp1RepDistances[Math.floor(Math.random() * sp1RepDistances.length)];
+        // Select a SetDefinition for the block (randomly from those that fit)
+        var suitableSetDefs = setDefinitions.filter(function (sd) {
+          return sd.distance <= distForCurrentBlockTarget;
+        });
+        if (suitableSetDefs.length === 0) return 1; // continue
+        var chosenSetDef = suitableSetDefs[Math.floor(Math.random() * suitableSetDefs.length)];
 
-        // Ensure repDist is not too large for distForCurrentBlock
-        if (repDist > distForCurrentBlock) {
-          var possibleDists = sp1RepDistances.filter(function (d) {
-            return d <= distForCurrentBlock;
+        // If random choice too large, pick largest that fits (already somewhat handled by filter, but good check)
+        // This part of logic might need refinement if random choice is strictly preferred.
+        // For now, ensure it fits:
+        if (chosenSetDef.distance > distForCurrentBlockTarget) {
+          var possibleSetDefs = suitableSetDefs.sort(function (a, b) {
+            return b.distance - a.distance;
+          }); // get largest
+          if (possibleSetDefs.length > 0) chosenSetDef = possibleSetDefs[0];else return 1; // continue
+        }
+        var currentRepDist = chosenSetDef.distance;
+        var maxRepsForThisDist = chosenSetDef.repScheme.maxReps || Infinity; // Max reps for this specific distance
+
+        var numReps = Math.floor(distForCurrentBlockTarget / currentRepDist);
+        numReps = Math.min(numReps, maxRepsForThisDist);
+        numReps = Math.max(numReps, chosenSetDef.repScheme.minReps || 1);
+        if (numReps * currentRepDist > distForCurrentBlockTarget) {
+          numReps = Math.floor(distForCurrentBlockTarget / currentRepDist);
+        }
+        if (numReps === 0) return 1; // continue
+        var currentBlockActualYardage = numReps * currentRepDist;
+        if (currentBlockActualYardage > 0) {
+          var blockRepRest = chosenSetDef.rest || getRestString(currentRepDist, restConfig);
+          var drillType = chosenSetDef.activity || drills[Math.floor(Math.random() * drills.length)]; // Prefer activity from setDef
+
+          setsOutput.push({
+            reps: numReps,
+            dist: currentRepDist,
+            activity: drillType,
+            restString: blockRepRest,
+            type: 'mainSetItem',
+            paceDesc: chosenSetDef.paceDescription,
+            notes: chosenSetDef.notes
           });
-          if (possibleDists.length > 0) {
-            repDist = possibleDists[possibleDists.length - 1]; // Largest possible that fits
-          } else {
-            return 1; // continue
-            // No suitable repDist for this block's target distance
-          }
-        }
-        if (repDist === 0) return 1; // continue
-        var numReps = Math.floor(distForCurrentBlock / repDist);
-        numReps = Math.min(numReps, 16); // Cap reps per block (e.g. 16x25=400, 8x50=400, 4x100=400)
-        numReps = Math.max(numReps, 1); // Ensure at least one rep
-
-        if (numReps * repDist > distForCurrentBlock) {
-          // Adjust if overshoot (should be rare)
-          numReps = Math.floor(distForCurrentBlock / repDist);
-        }
-        if (numReps > 0) {
-          var currentBlockActualYardage = numReps * repDist;
-          var sp1Rest = getSp1Rest(repDist);
-          var drillType = sp1Drills[Math.floor(Math.random() * sp1Drills.length)];
-          sets.push("".concat(numReps, "x").concat(repDist, " ").concat(drillType, " (").concat(energySystem, " focus) ").concat(sp1Rest));
-          accumulatedDistInSp1Set += currentBlockActualYardage;
-          actualRemainingForSp1Blocks -= currentBlockActualYardage;
-          if (i < numBlocks - 1 && actualRemainingForSp1Blocks >= sp1RepDistances[0]) {
-            // Rest between blocks: 1-2 minutes
-            var blockRestSeconds = 60 + Math.floor(Math.random() * 61); // 60 to 120 seconds
-            if (blockRestSeconds >= 60) {
-              var minutes = Math.floor(blockRestSeconds / 60);
-              var seconds = blockRestSeconds % 60;
-              if (seconds === 0) sets.push("".concat(minutes, "min rest between SP1 blocks"));else sets.push("".concat(minutes, "min ").concat(seconds, "s rest between SP1 blocks"));
-            } else {
-              // Should not happen with current logic
-              sets.push("".concat(blockRestSeconds, "s rest between SP1 blocks"));
-            }
+          accumulatedDistInSet += currentBlockActualYardage;
+          remainingForBlocksAllocation -= currentBlockActualYardage;
+          if (i < numBlocks - 1 && remainingForBlocksAllocation >= smallestRepDist && accumulatedDistInSet < targetOverallYardage) {
+            var restSecondsVal = interBlockRest.minSeconds + Math.floor(Math.random() * (interBlockRest.maxSeconds - interBlockRest.minSeconds + 1));
+            var formattedBlockRestText = typeof interBlockRest.format === 'function' ? interBlockRest.format(restSecondsVal) : "".concat(restSecondsVal, "s rest");
+            setsOutput.push({
+              type: 'blockRestItem',
+              text: formattedBlockRestText
+            });
           }
         }
       },
@@ -1191,39 +1116,299 @@
       if (_ret === 0) break;
       if (_ret === 1) continue;
     }
-    mainSetTotalDist = accumulatedDistInSp1Set;
-    var descriptiveMessage;
-    if (mainSetTotalDist > 0) {
-      descriptiveMessage = "SP1: Lactate Tolerance (".concat(energySystem, "), CSS -3-5s. Total ~").concat(mainSetTotalDist, "yds.");
-    } else {
-      descriptiveMessage = "SP1: Could not fit SP1 set. Available: ".concat(remainingDistanceForMainSet, ", Target SP1 range: 400-800.");
+    if (accumulatedDistInSet > 0) {
+      return {
+        generatedSets: setsOutput,
+        totalDistance: accumulatedDistInSet,
+        strategySpecificSummary: "".concat(setsOutput.filter(function (s) {
+          return s.type === 'mainSetItem';
+        }).length, " block(s), total ").concat(accumulatedDistInSet, "yds"),
+        restSummary: "Varied"
+      };
     }
+    return {
+      generatedSets: [],
+      totalDistance: 0,
+      strategySpecificSummary: "No blocks generated."
+    };
+  }
+  function generateSet_PatternBased(remainingDistance, strategyConfig, restConfig, setFormattingConfig) {
+    var setDefinitions = strategyConfig.setDefinitions,
+      selectionLogic = strategyConfig.selectionLogic,
+      fallbackStrategy = strategyConfig.fallbackStrategy; // Use setDefinitions
+    var viablePatterns = [];
+    var _iterator4 = _createForOfIteratorHelper(setDefinitions),
+      _step4;
+    try {
+      for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
+        var setDef = _step4.value;
+        // Iterate setDefinitions
+        if (setDef.repScheme.type === 'dynamic' && setDef.distance) {
+          if (remainingDistance >= setDef.distance) {
+            var _numReps = Math.floor(remainingDistance / setDef.distance);
+            if (setDef.repScheme.maxReps) _numReps = Math.min(_numReps, setDef.repScheme.maxReps);
+            if (setDef.repScheme.minReps) _numReps = Math.max(_numReps, setDef.repScheme.minReps);
+            if (_numReps > 0 && _numReps * setDef.distance <= remainingDistance) {
+              viablePatterns.push(_objectSpread2(_objectSpread2({}, setDef), {}, {
+                // Includes original distance, rest, paceDesc, etc.
+                reps: _numReps,
+                // dist: setDef.distance, // Already in setDef
+                totalDist: _numReps * setDef.distance,
+                id: setDef.id || "".concat(_numReps, "x").concat(setDef.distance) // Use existing ID or format
+              }));
+            }
+          }
+        } else if (setDef.repScheme.type === 'fixed' && setDef.totalDistance) {
+          if (remainingDistance >= setDef.totalDistance) {
+            // For fixed, reps and dist are already defined in setDef.repScheme.fixedReps and setDef.distance
+            viablePatterns.push(_objectSpread2(_objectSpread2({}, setDef), {}, {
+              reps: setDef.repScheme.fixedReps
+            }));
+          }
+        }
+      }
+    } catch (err) {
+      _iterator4.e(err);
+    } finally {
+      _iterator4.f();
+    }
+    var bestFitSet = null;
+    if (viablePatterns.length > 0) {
+      if (selectionLogic === "maxAchievedDistance") {
+        viablePatterns.sort(function (a, b) {
+          if (b.totalDist !== a.totalDist) return b.totalDist - a.totalDist;
+          // Approx original index for tie-breaking if needed (indexOf may not work directly on derived objects)
+          return setDefinitions.findIndex(function (sd) {
+            return sd.id === a.id;
+          }) - setDefinitions.findIndex(function (sd) {
+            return sd.id === b.id;
+          });
+        });
+        bestFitSet = viablePatterns[0];
+      } else if (selectionLogic === "prioritizeMaxDistanceThenRandom") {
+        var maxDist = 0;
+        viablePatterns.forEach(function (p) {
+          if (p.totalDist > maxDist) maxDist = p.totalDist;
+        });
+        var bestDistancePatterns = viablePatterns.filter(function (p) {
+          return p.totalDist === maxDist;
+        });
+        if (bestDistancePatterns.length > 0) {
+          bestFitSet = bestDistancePatterns[Math.floor(Math.random() * bestDistancePatterns.length)];
+        }
+      } else {
+        bestFitSet = viablePatterns[0];
+      }
+    }
+    if (!bestFitSet && fallbackStrategy && fallbackStrategy.setDefinitions && remainingDistance >= fallbackStrategy.minRepDistance) {
+      // Check fallbackStrategy.setDefinitions
+      if (fallbackStrategy.type === "simpleRepsMaxDistance") {
+        var bestFallbackOption = null;
+        var maxFallbackYardage = 0;
+        var _iterator5 = _createForOfIteratorHelper(fallbackStrategy.setDefinitions),
+          _step5;
+        try {
+          for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+            var fbSetDef = _step5.value;
+            // Iterate fallbackStrategy.setDefinitions
+            if (remainingDistance >= fbSetDef.distance) {
+              var numReps = Math.floor(remainingDistance / fbSetDef.distance);
+              if (fbSetDef.repScheme && fbSetDef.repScheme.maxReps) {
+                // Assume fallback options are dynamic
+                numReps = Math.min(numReps, fbSetDef.repScheme.maxReps);
+              }
+              if (fbSetDef.repScheme && fbSetDef.repScheme.minReps) {
+                numReps = Math.max(numReps, fbSetDef.repScheme.minReps);
+              }
+              if (numReps > 0 && numReps * fbSetDef.distance <= remainingDistance) {
+                var currentYardage = numReps * fbSetDef.distance;
+                if (currentYardage > maxFallbackYardage) {
+                  maxFallbackYardage = currentYardage;
+                  bestFallbackOption = _objectSpread2(_objectSpread2({}, fbSetDef), {}, {
+                    reps: numReps,
+                    totalDist: currentYardage,
+                    id: fbSetDef.id || "".concat(numReps, "x").concat(fbSetDef.distance, " (fallback)")
+                  });
+                }
+              }
+            }
+          }
+        } catch (err) {
+          _iterator5.e(err);
+        } finally {
+          _iterator5.f();
+        }
+        if (bestFallbackOption) bestFitSet = bestFallbackOption;
+      }
+    }
+    if (bestFitSet) {
+      var rest = bestFitSet.rest || getRestString(bestFitSet.distance, restConfig, bestFitSet.rest);
+      var setInfo = {
+        reps: bestFitSet.reps,
+        dist: bestFitSet.distance,
+        restString: rest,
+        paceDesc: bestFitSet.paceDescription,
+        activity: bestFitSet.activity || setFormattingConfig.defaultActivity || "swim",
+        notes: bestFitSet.notes
+      };
+      return {
+        generatedSets: [setInfo],
+        totalDistance: bestFitSet.totalDist,
+        strategySpecificSummary: bestFitSet.id || "".concat(bestFitSet.reps, "x").concat(bestFitSet.distance),
+        restSummary: rest,
+        paceDescription: bestFitSet.paceDescription
+      };
+    }
+    return {
+      generatedSets: [],
+      totalDistance: 0,
+      strategySpecificSummary: "No pattern or fallback matched."
+    };
+  }
 
-    // If mainSetTotalDist is very low compared to what was available (e.g. targetSp1TotalYardage was 400, but we only made 100)
-    // This might indicate the block division or rep selection was suboptimal.
-    // The current logic tries to fill targetSp1TotalYardage.
-
+  // --- Main Generator Function ---
+  function generateMainSetFromConfig(energySystem, cssSecondsPer100, remainingDistanceForMainSet, config) {
+    var sets = [];
+    var mainSetTotalDist = 0;
+    var targetPacePer100 = 0;
+    var descriptiveMessage = "";
+    if (!config) {
+      return {
+        sets: sets,
+        mainSetTotalDist: mainSetTotalDist,
+        targetPacePer100: targetPacePer100,
+        descriptiveMessage: "Error: Workout configuration not provided."
+      };
+    }
+    targetPacePer100 = calculateTargetPace(cssSecondsPer100, config.paceConfig);
+    var getMinRepDistForType = function getMinRepDistForType(cfg) {
+      if (!cfg || !cfg.strategyConfig) return (cfg === null || cfg === void 0 ? void 0 : cfg.minTotalDistanceForSet) || 0;
+      var minDist = Infinity;
+      if (cfg.strategyConfig.setDefinitions && cfg.strategyConfig.setDefinitions.length > 0) {
+        cfg.strategyConfig.setDefinitions.forEach(function (sd) {
+          if (sd.distance < minDist) minDist = sd.distance;
+        });
+      }
+      // Check fallback definitions too, if they exist
+      if (cfg.strategyConfig.fallbackStrategy && cfg.strategyConfig.fallbackStrategy.setDefinitions && cfg.strategyConfig.fallbackStrategy.setDefinitions.length > 0) {
+        cfg.strategyConfig.fallbackStrategy.setDefinitions.forEach(function (sd) {
+          if (sd.distance < minDist) minDist = sd.distance;
+        });
+      }
+      // If still Infinity, means no distances found, use fallbackStrategy.minRepDistance or overall minTotalDistanceForSet
+      if (minDist === Infinity) {
+        var _cfg$strategyConfig$f;
+        minDist = ((_cfg$strategyConfig$f = cfg.strategyConfig.fallbackStrategy) === null || _cfg$strategyConfig$f === void 0 ? void 0 : _cfg$strategyConfig$f.minRepDistance) || cfg.minTotalDistanceForSet || 0;
+      }
+      // Final fallback to minTotalDistanceForSet if all else fails or gives 0 but minTotalDistanceForSet is higher
+      return Math.max(minDist, cfg.minTotalDistanceForSet || 0);
+    };
+    if (config.minTotalDistanceForSet && remainingDistanceForMainSet < config.minTotalDistanceForSet) {
+      descriptiveMessage = formatDescriptiveMessage(config.descriptiveMessages.tooShort, {
+        workoutTypeName: config.workoutTypeName,
+        minRepDistForType: String(getMinRepDistForType(config)),
+        // Updated to use the new logic
+        remainingDistance: String(remainingDistanceForMainSet)
+      });
+      return {
+        sets: sets,
+        mainSetTotalDist: 0,
+        targetPacePer100: targetPacePer100,
+        descriptiveMessage: descriptiveMessage
+      };
+    }
+    var strategyResult;
+    var strategyFnMap = {
+      "bestFitSingleRepetition": generateSet_BestFitSingleRepetition,
+      "closestFitGeneral": generateSet_ClosestFitGeneral,
+      "targetYardageWithRepChoice": generateSet_TargetYardageRepChoice,
+      "multiBlock": generateSet_MultiBlock,
+      "patternBased": generateSet_PatternBased
+    };
+    var strategyFn = strategyFnMap[config.setGenerationStrategy];
+    if (typeof strategyFn === 'function') {
+      if (config.setGenerationStrategy === "patternBased") {
+        strategyResult = strategyFn(remainingDistanceForMainSet, config.strategyConfig, config.restConfig, config.setFormatting);
+      } else if (config.setGenerationStrategy === "multiBlock") {
+        strategyResult = strategyFn(remainingDistanceForMainSet, config.strategyConfig, config.restConfig);
+      } else {
+        strategyResult = strategyFn(remainingDistanceForMainSet, config.strategyConfig, config.restConfig, energySystem, config.setFormatting);
+      }
+    } else {
+      descriptiveMessage = "Error: Unknown/unimplemented strategy: ".concat(config.setGenerationStrategy || 'undefined');
+      return {
+        sets: sets,
+        mainSetTotalDist: 0,
+        targetPacePer100: targetPacePer100,
+        descriptiveMessage: descriptiveMessage
+      };
+    }
+    if (strategyResult && strategyResult.generatedSets && strategyResult.generatedSets.length > 0 && strategyResult.totalDistance > 0) {
+      mainSetTotalDist = strategyResult.totalDistance;
+      strategyResult.generatedSets.forEach(function (item) {
+        if (item.type === 'blockRestItem') {
+          sets.push(item.text);
+        } else {
+          sets.push(formatSetString(item, energySystem, config.setFormatting));
+        }
+      });
+      var paceSummaryText = "CSS";
+      if (config.paceConfig) {
+        var pc = config.paceConfig;
+        if (pc.offset === 0 && !pc.randomRange) ; else if (pc.operator && (pc.offset || pc.randomRange)) {
+          var basePaceDesc = "CSS ";
+          var offsetPart = "";
+          if (pc.offset) {
+            offsetPart = "".concat(pc.operator).concat(pc.offset);
+          }
+          if (pc.randomRange) {
+            var rangeEnd = pc.offset + pc.randomRange;
+            if (pc.offset && Math.abs(rangeEnd) !== Math.abs(pc.offset)) {
+              offsetPart += "-".concat(Math.abs(rangeEnd));
+            } else if (!pc.offset) {
+              offsetPart = "".concat(pc.operator, "0-").concat(Math.abs(pc.randomRange));
+            }
+          }
+          paceSummaryText = basePaceDesc + offsetPart + "s/100m";
+        }
+      }
+      descriptiveMessage = formatDescriptiveMessage(config.descriptiveMessages.success, {
+        workoutTypeName: config.workoutTypeName,
+        setSummary: strategyResult.strategySpecificSummary || "Set generated",
+        energySystem: energySystem,
+        totalDistance: String(mainSetTotalDist),
+        paceDescription: strategyResult.paceDescription || paceSummaryText,
+        restSummary: strategyResult.restSummary || "Varied rest"
+      });
+    } else {
+      var _strategyResult;
+      mainSetTotalDist = 0;
+      descriptiveMessage = formatDescriptiveMessage(config.descriptiveMessages.fail, {
+        workoutTypeName: config.workoutTypeName,
+        energySystem: energySystem,
+        remainingDistance: String(remainingDistanceForMainSet),
+        details: ((_strategyResult = strategyResult) === null || _strategyResult === void 0 ? void 0 : _strategyResult.strategySpecificSummary) || "No sets generated by strategy."
+      });
+    }
     return {
       sets: sets,
       mainSetTotalDist: mainSetTotalDist,
       targetPacePer100: targetPacePer100,
       descriptiveMessage: descriptiveMessage
     };
-  };
+  }
 
-  // Content of lib/data/mainSets/MAX_SPRINT.js to be updated:
+  // lib/data/mainSetConfigs.js - V3_SCHEMA_UPDATE_MARKER_CONFIGS
 
-  var sp2RepDistances = [25, 50];
-
-  // Helper function to get SP2 rest string (e.g., "1'30"r" or "3'r")
+  // Helper function for SP2 Rest (from MAX_SPRINT.js)
   var getSp2RestString = function getSp2RestString(repDist) {
     var minSec, maxSec;
     if (repDist === 25) {
-      minSec = 60; // 1 min
-      maxSec = 180; // 3 min
+      minSec = 60;
+      maxSec = 180;
     } else if (repDist === 50) {
-      minSec = 180; // 3 min
-      maxSec = 300; // 5 min
+      minSec = 180;
+      maxSec = 300;
     } else {
       // Should not happen
       minSec = 60;
@@ -1233,184 +1418,543 @@
     var minutes = Math.floor(totalSeconds / 60);
     var seconds = totalSeconds % 60;
     var restString = "";
-    if (minutes > 0) {
-      restString += "".concat(minutes, "'");
-    }
-    if (seconds > 0) {
-      // If there are minutes, and seconds, add a space or separator if needed,
-      // but standard notation often just concatenates e.g. 1'30"
-      restString += "".concat(seconds, "\"");
-    } else if (minutes === 0 && seconds === 0) {
-      // Unlikely to be 0 total rest
-      restString = '10"'; // Default small rest if somehow 0
-    }
+    if (minutes > 0) restString += "".concat(minutes, "'");
+    if (seconds > 0) restString += "".concat(seconds, "\"");else if (minutes === 0 && seconds === 0) restString = '10"';
     return "r".concat(restString);
   };
-  var MAX_SPRINT = function MAX_SPRINT(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
-    var sets = [];
-    var mainSetTotalDist = 0;
-    // New pace: CSS -10 to -15s (near max)
-    var targetPacePer100 = cssSecondsPer100 - 10 - Math.random() * 5;
 
-    // SP2 overall set length: 300 to 600yds.
-    var targetSp2TotalYardage = Math.max(300, Math.min(remainingDistanceForMainSet, 4500));
-    if (remainingDistanceForMainSet < sp2RepDistances[0]) {
-      // Smallest rep is 25
-      return {
-        sets: sets,
-        mainSetTotalDist: 0,
-        targetPacePer100: targetPacePer100,
-        descriptiveMessage: "SP2: Too short. Min rep 25. Available: ".concat(remainingDistanceForMainSet, ".")
-      };
-    }
-    if (targetSp2TotalYardage < sp2RepDistances[0]) {
-      return {
-        sets: sets,
-        mainSetTotalDist: 0,
-        targetPacePer100: targetPacePer100,
-        descriptiveMessage: "SP2: Target yardage ".concat(targetSp2TotalYardage, " too low. Min rep 25.")
-      };
-    }
-    var repDist = 0;
-    var numReps = 0;
-
-    // Decide on rep distance: 25s or 50s.
-    // If targetSp2TotalYardage is small (e.g., < 150 for 50s), prefer 25s.
-    // Or, if it allows significantly more reps for 25s.
-    // Let's try to pick one and stick to it for the set.
-    // Prioritize 50s if enough yardage (e.g. >= 150-200), otherwise 25s.
-
-    var canDo50s = targetSp2TotalYardage >= 50; // Min 1 rep of 50
-    var canDo25s = targetSp2TotalYardage >= 25; // Min 1 rep of 25
-
-    if (canDo50s && targetSp2TotalYardage >= 150) {
-      // Prefer 50s if total yardage is decent
-      repDist = 50;
-    } else if (canDo25s) {
-      repDist = 25;
-    } else {
-      // Not enough for even a single 25
-      return {
-        sets: sets,
-        mainSetTotalDist: 0,
-        targetPacePer100: targetPacePer100,
-        descriptiveMessage: "SP2: Not enough yardage for a single rep. Target: ".concat(targetSp2TotalYardage, ".")
-      };
-    }
-    numReps = Math.floor(targetSp2TotalYardage / repDist);
-    numReps = Math.max(numReps, 1); // Ensure at least 1 rep if we decided on a repDist
-
-    var actualSetTotalYardage = numReps * repDist;
-    if (actualSetTotalYardage > 0) {
-      var sp2Rest = getSp2RestString(repDist);
-      // Original set string: `${numReps}x${repDist} UW sprint (${energySystem} focus, breath at wall) @ ${sp2Rest}`
-      // Keeping similar style. "UW sprint" and "breath at wall" are good specifiers for max effort.
-      sets.push("".concat(numReps, "x").concat(repDist, " UW sprint (").concat(energySystem, " focus, breath at wall) ").concat(sp2Rest));
-      mainSetTotalDist = actualSetTotalYardage;
-    } else {
-      // This path should be less likely given the checks.
-      mainSetTotalDist = 0;
-    }
-    var descriptiveMessage;
-    if (mainSetTotalDist > 0) {
-      descriptiveMessage = "SP2: Lactate Production (".concat(energySystem, "), Near Max Effort. Set: ").concat(numReps, "x").concat(repDist, ". Total ~").concat(mainSetTotalDist, "yds.");
-    } else {
-      descriptiveMessage = "SP2: Could not fit SP2 set. Available: ".concat(remainingDistanceForMainSet, ", Target SP2 range: 300-600.");
-    }
-    return {
-      sets: sets,
-      mainSetTotalDist: mainSetTotalDist,
-      targetPacePer100: targetPacePer100,
-      descriptiveMessage: descriptiveMessage
-    };
+  // Helper function for SP1 Rest (from SPEED_ENDURANCE.js)
+  var getSp1Rest = function getSp1Rest(repDist) {
+    var baseRestSeconds;
+    if (repDist === 100) baseRestSeconds = 10;else if (repDist === 75) baseRestSeconds = 7.5;else if (repDist === 50) baseRestSeconds = 5;else if (repDist === 25) baseRestSeconds = 2.5;else baseRestSeconds = 5;
+    var multiplier = 2 + Math.random();
+    var restSeconds = Math.round(baseRestSeconds * multiplier / 5) * 5;
+    restSeconds = Math.max(restSeconds, 5);
+    if (repDist === 100) restSeconds = Math.max(restSeconds, 20);
+    return "r".concat(restSeconds, "\"");
   };
 
-  var GENERAL_ENDURANCE = function GENERAL_ENDURANCE(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
-    var sets = [];
-    var mainSetTotalDist = 0;
-    var targetPacePer100 = cssSecondsPer100;
-    var generalDistances = [500, 400, 300, 200, 100, 50];
-    var bestRepDist = 0;
-    var bestNumReps = 0;
-    var smallestRemainder = Infinity;
-    if (remainingDistanceForMainSet < 25) {
-      // Smallest possible rep distance
-      return {
-        sets: sets,
-        mainSetTotalDist: 0,
-        targetPacePer100: targetPacePer100,
-        descriptiveMessage: "General Endurance (".concat(energySystem, ") set - too short.")
-      };
+  // Unified SetDefinition Schema (for reference in this file)
+  // {
+  //     id: String (optional),
+  //     distance: Number,
+  //     repScheme: {
+  //         type: "dynamic" | "fixed",
+  //         maxReps: Number (if type="dynamic"),
+  //         fixedReps: Number (if type="fixed"),
+  //         minReps: Number (optional for "dynamic")
+  //     },
+  //     rest: String (optional),
+  //     paceDescription: String (optional),
+  //     activity: String (optional, defaults to "swim"),
+  //     notes: String (optional),
+  //     totalDistance: Number (optional, for type="fixed")
+  // }
+
+  var ENDURANCE_BASE_CONFIG = {
+    workoutTypeName: "EN1",
+    minTotalDistanceForSet: 500,
+    paceConfig: {
+      baseMetric: "css",
+      offset: 5,
+      randomRange: 10,
+      operator: "+"
+    },
+    setGenerationStrategy: "bestFitSingleRepetition",
+    strategyConfig: {
+      setDefinitions: [{
+        distance: 500,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 12
+        },
+        activity: "swim/kick"
+      }, {
+        distance: 600,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 10
+        },
+        activity: "swim/kick"
+      }, {
+        distance: 700,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 8
+        },
+        activity: "swim/kick"
+      }, {
+        distance: 800,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 7
+        },
+        activity: "swim/kick"
+      }, {
+        distance: 900,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 6
+        },
+        activity: "swim/kick"
+      }, {
+        distance: 1000,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 6
+        },
+        activity: "swim/kick"
+      }],
+      selectionPreference: {
+        tiebreakYardage: "preferShorterRepIfSameYardageThenMoreReps",
+        shorterRepValue: 500
+      }
+    },
+    restConfig: {
+      type: "fixed",
+      value: 'r60"'
+    },
+    setFormatting: {
+      baseStructure: "{reps}x{dist} {activity} ({energySystem} focus) {rest}",
+      defaultActivity: "swim/kick"
+    },
+    descriptiveMessages: {
+      success: "EN1: {setSummary} ({energySystem}), CSS +5-15s/100m pace guide, 60\" rest.",
+      tooShort: "EN1: Too short. Min rep distance {minRepDistForType}, available: {remainingDistance}.",
+      fail: "EN1: Could not fit EN1 reps for {energySystem}. Available: {remainingDistance}."
     }
-    for (var _i = 0, _generalDistances = generalDistances; _i < _generalDistances.length; _i++) {
-      var dist = _generalDistances[_i];
-      if (remainingDistanceForMainSet >= dist) {
-        var currentNumReps = Math.floor(remainingDistanceForMainSet / dist);
-        var currentRemainder = remainingDistanceForMainSet - currentNumReps * dist;
-        if (currentNumReps > 0) {
-          // Only consider if at least one rep is possible
-          if (currentRemainder < smallestRemainder) {
-            smallestRemainder = currentRemainder;
-            bestRepDist = dist;
-            bestNumReps = currentNumReps;
-          } else if (currentRemainder === smallestRemainder) {
-            if (dist > bestRepDist) {
-              // Prefer larger rep distance for same remainder
-              bestRepDist = dist;
-              bestNumReps = currentNumReps;
-            }
+  };
+  var GENERAL_ENDURANCE_CONFIG = {
+    workoutTypeName: "General Endurance",
+    minTotalDistanceForSet: 25,
+    paceConfig: {
+      baseMetric: "css",
+      offset: 0,
+      operator: "+"
+    },
+    setGenerationStrategy: "closestFitGeneral",
+    strategyConfig: {
+      setDefinitions: [{
+        distance: 500,
+        repScheme: {
+          type: "dynamic",
+          maxReps: Infinity
+        }
+      }, {
+        distance: 400,
+        repScheme: {
+          type: "dynamic",
+          maxReps: Infinity
+        }
+      }, {
+        distance: 300,
+        repScheme: {
+          type: "dynamic",
+          maxReps: Infinity
+        }
+      }, {
+        distance: 200,
+        repScheme: {
+          type: "dynamic",
+          maxReps: Infinity
+        }
+      }, {
+        distance: 100,
+        repScheme: {
+          type: "dynamic",
+          maxReps: Infinity
+        }
+      }, {
+        distance: 50,
+        repScheme: {
+          type: "dynamic",
+          maxReps: Infinity
+        }
+      }],
+      minRepDistanceForFallback: 25,
+      conservativeAdjustment: {
+        enabled: true,
+        usageThresholdFactor: 0.80,
+        minRepDistance: 200,
+        minReps: 3
+      }
+    },
+    restConfig: {
+      type: "distanceBased",
+      values: {
+        300: 'r45"',
+        200: 'r30"',
+        100: 'r20"',
+        "default": 'r15"'
+      }
+    },
+    setFormatting: {
+      baseStructure: "{reps}x{dist} swim ({energySystem} focus) {rest}",
+      defaultActivity: "swim"
+    },
+    descriptiveMessages: {
+      success: "General Endurance ({energySystem}) default set. {setSummary}",
+      tooShort: "General Endurance ({energySystem}) set - too short. Available: {remainingDistance}.",
+      fail: "General Endurance ({energySystem}): Could not fit set. Available: {remainingDistance}."
+    }
+  };
+  var MAX_SPRINT_CONFIG = {
+    workoutTypeName: "SP2",
+    minTotalDistanceForSet: 25,
+    paceConfig: {
+      baseMetric: "css",
+      offset: 10,
+      randomRange: 5,
+      operator: "-"
+    },
+    setGenerationStrategy: "targetYardageWithRepChoice",
+    strategyConfig: {
+      setTargetDistanceMin: 300,
+      setTargetDistanceMaxDefault: 600,
+      setTargetDistanceMaxCap: 4500,
+      setDefinitions: [{
+        distance: 25,
+        repScheme: {
+          type: "dynamic",
+          maxReps: Infinity
+        },
+        activity: "UW sprint",
+        notes: "breath at wall"
+      }, {
+        distance: 50,
+        repScheme: {
+          type: "dynamic",
+          maxReps: Infinity
+        },
+        activity: "UW sprint",
+        notes: "breath at wall"
+      }],
+      repChoiceLogic: {
+        preferDistance: 50,
+        thresholdYardage: 150
+      }
+    },
+    restConfig: {
+      type: "customFunction",
+      customFunction: getSp2RestString
+    },
+    setFormatting: {
+      baseStructure: "{reps}x{dist} {activity} ({energySystem} focus, {notes}) {rest}",
+      defaultActivity: "UW sprint"
+    },
+    descriptiveMessages: {
+      success: "SP2: Lactate Production ({energySystem}), Near Max Effort. Set: {setSummary}. Total ~{totalDistance}yds.",
+      tooShort: "SP2: Too short. Min rep 25. Available: {remainingDistance}.",
+      fail: "SP2: Could not fit SP2 set. Available: {remainingDistance} (target yardage for SP2 is typically 300-600)."
+    }
+  };
+  var SPEED_ENDURANCE_CONFIG = {
+    workoutTypeName: "SP1",
+    minTotalDistanceForSet: 25,
+    paceConfig: {
+      baseMetric: "css",
+      offset: 3,
+      randomRange: 2,
+      operator: "-"
+    },
+    setGenerationStrategy: "multiBlock",
+    strategyConfig: {
+      setTargetDistanceMin: 400,
+      setTargetDistanceMaxCap: 4500,
+      targetYardagePerBlockApprox: 800,
+      setDefinitions: [{
+        distance: 25,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 16
+        }
+      }, {
+        distance: 50,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 16
+        }
+      }, {
+        distance: 75,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 16
+        }
+      }, {
+        distance: 100,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 16
+        }
+      }],
+      drills: ["swim", "kb", "FU", "HUHO"],
+      interBlockRest: {
+        minSeconds: 60,
+        maxSeconds: 120,
+        format: function format(seconds) {
+          var minutes = Math.floor(seconds / 60);
+          var secs = seconds % 60;
+          var timeStr;
+          if (minutes > 0) {
+            timeStr = secs === 0 ? "".concat(minutes, "min") : "".concat(minutes, "min ").concat(secs, "s");
+          } else {
+            timeStr = "".concat(secs, "s");
           }
+          return "".concat(timeStr, " rest between SP1 blocks");
         }
       }
+    },
+    restConfig: {
+      type: "customFunction",
+      customFunction: getSp1Rest
+    },
+    setFormatting: {
+      baseStructure: "{reps}x{dist} {activity} ({energySystem} focus) {rest}"
+    },
+    descriptiveMessages: {
+      success: "SP1: Lactate Tolerance ({energySystem}), CSS -3-5s. Total ~{totalDistance}yds.",
+      tooShort: "SP1: Too short. Min rep 25. Available: {remainingDistance}.",
+      fail: "SP1: Could not fit SP1 set. Available: {remainingDistance} (target yardage for SP1 is typically 400-800)."
     }
-    if (bestNumReps === 0 && remainingDistanceForMainSet >= 25) {
-      // If no standard dist fits (e.g. remaining 75), make one up
-      // Try to make it a multiple of 25 or 50.
-      if (remainingDistanceForMainSet >= 50) {
-        bestRepDist = Math.floor(remainingDistanceForMainSet / 50) * 50;
-        if (bestRepDist === 0) bestRepDist = 50; // if remaining is e.g. 70, floor(70/50)*50 = 50
-      } else {
-        // remaining is 25 to 49
-        bestRepDist = 25;
+  };
+  var THRESHOLD_DEVELOPMENT_CONFIG = {
+    workoutTypeName: "EN3",
+    minTotalDistanceForSet: 400,
+    paceConfig: {
+      baseMetric: "css",
+      offset: 1,
+      randomRange: 1,
+      operator: "-"
+    },
+    setGenerationStrategy: "patternBased",
+    strategyConfig: {
+      setDefinitions: [{
+        id: 'Nx400_css_r50',
+        distance: 400,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 18
+        },
+        rest: 'r50"',
+        paceDescription: 'CSS'
+      }, {
+        id: 'Nx500_css_r60',
+        distance: 500,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 14
+        },
+        rest: 'r60"',
+        paceDescription: 'CSS'
+      }, {
+        id: 'Nx600_css_r90',
+        distance: 600,
+        repScheme: {
+          type: "dynamic",
+          maxReps: 12
+        },
+        rest: 'r90"',
+        paceDescription: 'CSS'
+      }],
+      selectionLogic: "maxAchievedDistance",
+      fallbackStrategy: {
+        type: "simpleRepsMaxDistance",
+        setDefinitions: [{
+          distance: 600,
+          repScheme: {
+            type: "dynamic",
+            maxReps: 6
+          },
+          rest: 'r90"',
+          paceDescription: 'CSS -1-2s'
+        }, {
+          distance: 500,
+          repScheme: {
+            type: "dynamic",
+            maxReps: 6
+          },
+          rest: 'r60"',
+          paceDescription: 'CSS -1-2s'
+        }, {
+          distance: 400,
+          repScheme: {
+            type: "dynamic",
+            maxReps: 6
+          },
+          rest: 'r45"',
+          paceDescription: 'CSS -1-2s'
+        }],
+        minRepDistance: 400
       }
-      if (bestRepDist > 0) bestNumReps = Math.floor(remainingDistanceForMainSet / bestRepDist);
-      if (bestNumReps * bestRepDist > remainingDistanceForMainSet) bestNumReps = 0; // safety
+    },
+    restConfig: {
+      type: "patternDefined"
+    },
+    setFormatting: {
+      baseStructure: "{reps}x{dist} {energySystem} focus swim @ {paceDesc} {rest}",
+      defaultActivity: "swim"
+    },
+    descriptiveMessages: {
+      success: "EN3: {setSummary} ({energySystem}) @ {paceDescription}.",
+      tooShort: "EN3: Too short for EN3 sets (min rep {minRepDistForType}). Available: {remainingDistance}.",
+      fail: "EN3: Could not fit standard or fallback EN3 set for {energySystem}. Available: {remainingDistance}."
     }
-
-    // --- Start of new conservative adjustment logic ---
-    if (bestNumReps > 0 && bestRepDist > 0) {
-      var calculatedDist = bestNumReps * bestRepDist;
-      if (calculatedDist > remainingDistanceForMainSet * 0.80 && bestRepDist >= 200 && bestNumReps > 2) {
-        console.log("DEBUG GENERAL_ENDURANCE: Conservative adjustment. Original reps: ".concat(bestNumReps, "x").concat(bestRepDist, ". Reducing reps by 1."));
-        bestNumReps--;
+  };
+  var THRESHOLD_SUSTAINED_CONFIG = {
+    workoutTypeName: "EN2",
+    minTotalDistanceForSet: 100,
+    paceConfig: {
+      baseMetric: "css",
+      offset: 0,
+      operator: "+"
+    },
+    setGenerationStrategy: "patternBased",
+    strategyConfig: {
+      setDefinitions: [{
+        id: '18x100_css_r10',
+        distance: 100,
+        repScheme: {
+          type: 'fixed',
+          fixedReps: 18
+        },
+        totalDistance: 1800,
+        rest: 'r10"',
+        paceDescription: 'CSS'
+      }, {
+        id: '10x200_css_r20',
+        distance: 200,
+        repScheme: {
+          type: 'fixed',
+          fixedReps: 10
+        },
+        totalDistance: 2000,
+        rest: 'r20"',
+        paceDescription: 'CSS'
+      }, {
+        id: 'Nx400_css_r40',
+        distance: 400,
+        repScheme: {
+          type: 'dynamic',
+          maxReps: 18
+        },
+        rest: 'r40"',
+        paceDescription: 'CSS'
+      }, {
+        id: 'Nx500_css_r50',
+        distance: 500,
+        repScheme: {
+          type: 'dynamic',
+          maxReps: 14
+        },
+        rest: 'r50"',
+        paceDescription: 'CSS'
+      }, {
+        id: 'Nx600_css_r60',
+        distance: 600,
+        repScheme: {
+          type: 'dynamic',
+          maxReps: 12
+        },
+        rest: 'r60"',
+        paceDescription: 'CSS'
+      }, {
+        id: 'Nx800_css_r90',
+        distance: 800,
+        repScheme: {
+          type: 'dynamic',
+          maxReps: 8
+        },
+        rest: 'r90"',
+        paceDescription: 'CSS'
+      }, {
+        id: 'Nx1000_css_r90',
+        distance: 1000,
+        repScheme: {
+          type: 'dynamic',
+          maxReps: 6
+        },
+        rest: 'r90"',
+        paceDescription: 'CSS'
+      }],
+      selectionLogic: "prioritizeMaxDistanceThenRandom",
+      fallbackStrategy: {
+        type: "simpleRepsMaxDistance",
+        setDefinitions: [{
+          distance: 200,
+          repScheme: {
+            type: "dynamic",
+            maxReps: 40
+          },
+          rest: 'r20"',
+          paceDescription: 'CSS'
+        }, {
+          distance: 100,
+          repScheme: {
+            type: "dynamic",
+            maxReps: 60
+          },
+          rest: 'r10"',
+          paceDescription: 'CSS'
+        }],
+        minRepDistance: 100
       }
+    },
+    restConfig: {
+      type: "patternDefined"
+    },
+    setFormatting: {
+      baseStructure: "{reps}x{dist} {energySystem} focus swim @ {paceDesc} {rest}",
+      defaultActivity: "swim"
+    },
+    descriptiveMessages: {
+      success: "EN2: {setSummary} ({energySystem}) @ CSS.",
+      tooShort: "EN2: Too short for EN2 sets. Available: {remainingDistance}.",
+      fail: "EN2: Could not fit standard EN2 set for {energySystem}. Available: {remainingDistance}."
     }
-    // --- End of new conservative adjustment logic ---
-
-    if (bestNumReps > 0 && bestRepDist > 0) {
-      // Ensure still valid after potential decrement
-      var restTime = 30;
-      if (bestRepDist >= 300) restTime = 45;else if (bestRepDist >= 200) restTime = 30;else if (bestRepDist >= 100) restTime = 20;else restTime = 15;
-      sets.push("".concat(bestNumReps, "x").concat(bestRepDist, " swim (").concat(energySystem, " focus) r").concat(restTime, "\""));
-      mainSetTotalDist = bestNumReps * bestRepDist;
-    } else {
-      mainSetTotalDist = 0;
-    }
-    return {
-      sets: sets,
-      mainSetTotalDist: mainSetTotalDist,
-      targetPacePer100: targetPacePer100,
-      descriptiveMessage: "General Endurance (".concat(energySystem, ") default set.")
-    };
+  };
+  var ALL_WORKOUT_CONFIGS = {
+    ENDURANCE_BASE: ENDURANCE_BASE_CONFIG,
+    GENERAL_ENDURANCE: GENERAL_ENDURANCE_CONFIG,
+    MAX_SPRINT: MAX_SPRINT_CONFIG,
+    SPEED_ENDURANCE: SPEED_ENDURANCE_CONFIG,
+    THRESHOLD_DEVELOPMENT: THRESHOLD_DEVELOPMENT_CONFIG,
+    THRESHOLD_SUSTAINED: THRESHOLD_SUSTAINED_CONFIG
   };
 
-  var mainSetDefinitions = {
-    'ENDURANCE_BASE': ENDURANCE_BASE,
-    'THRESHOLD_SUSTAINED': THRESHOLD_SUSTAINED,
-    'THRESHOLD_DEVELOPMENT': THRESHOLD_DEVELOPMENT,
-    'SPEED_ENDURANCE': SPEED_ENDURANCE,
-    'MAX_SPRINT': MAX_SPRINT,
-    'GENERAL_ENDURANCE': GENERAL_ENDURANCE
+  // Further comments removed.
+
+  // lib/data/mainSets.js
+
+  // The individual functions are now replaced by calls to the generator
+
+  var ENDURANCE_BASE = function ENDURANCE_BASE(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
+    return generateMainSetFromConfig(energySystem, cssSecondsPer100, remainingDistanceForMainSet, ALL_WORKOUT_CONFIGS.ENDURANCE_BASE);
+  };
+  var GENERAL_ENDURANCE = function GENERAL_ENDURANCE(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
+    return generateMainSetFromConfig(energySystem, cssSecondsPer100, remainingDistanceForMainSet, ALL_WORKOUT_CONFIGS.GENERAL_ENDURANCE);
+  };
+  var MAX_SPRINT = function MAX_SPRINT(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
+    return generateMainSetFromConfig(energySystem, cssSecondsPer100, remainingDistanceForMainSet, ALL_WORKOUT_CONFIGS.MAX_SPRINT);
+  };
+  var SPEED_ENDURANCE = function SPEED_ENDURANCE(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
+    return generateMainSetFromConfig(energySystem, cssSecondsPer100, remainingDistanceForMainSet, ALL_WORKOUT_CONFIGS.SPEED_ENDURANCE);
+  };
+  var THRESHOLD_DEVELOPMENT = function THRESHOLD_DEVELOPMENT(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
+    return generateMainSetFromConfig(energySystem, cssSecondsPer100, remainingDistanceForMainSet, ALL_WORKOUT_CONFIGS.THRESHOLD_DEVELOPMENT);
+  };
+  var THRESHOLD_SUSTAINED = function THRESHOLD_SUSTAINED(energySystem, cssSecondsPer100, remainingDistanceForMainSet) {
+    return generateMainSetFromConfig(energySystem, cssSecondsPer100, remainingDistanceForMainSet, ALL_WORKOUT_CONFIGS.THRESHOLD_SUSTAINED);
+  };
+
+  // This object is used by other parts of the application to select a main set function.
+  // It now correctly points to the new wrapper functions.
+  var mainSetFunctions = {
+    ENDURANCE_BASE: ENDURANCE_BASE,
+    GENERAL_ENDURANCE: GENERAL_ENDURANCE,
+    MAX_SPRINT: MAX_SPRINT,
+    SPEED_ENDURANCE: SPEED_ENDURANCE,
+    THRESHOLD_DEVELOPMENT: THRESHOLD_DEVELOPMENT,
+    THRESHOLD_SUSTAINED: THRESHOLD_SUSTAINED
   };
 
   /**
@@ -1637,7 +2181,7 @@
     };
     var internalWorkoutType = energySystemToWorkoutType[energySystem.toUpperCase()];
     if (!internalWorkoutType) {
-      console.warn("Unknown energySystem: ".concat(energySystem, ". Defaulting to GENERAL_ENDURANCE if workoutType param is also not specific."));
+      // console.warn(`Unknown energySystem: ${energySystem}. Defaulting to GENERAL_ENDURANCE if workoutType param is also not specific.`);
       // If the original workoutType parameter was provided and is valid, it could be used.
       // However, the new guidelines are driven by EN1, EN2 etc.
       // So, if energySystem doesn't map, we might default or rely on the generateMainSet's default.
@@ -1653,9 +2197,9 @@
       // If internalWorkoutType is still undefined, generateMainSet's default to GENERAL_ENDURANCE will occur.
     }
 
-    // const mainSetResult = workoutComponents.generateMainSet(workoutType, energySystem, cssSecondsPer100, remainingDistanceForMainSet, mainSetDefinitions);
+    // const mainSetResult = workoutComponents.generateMainSet(workoutType, energySystem, cssSecondsPer100, remainingDistanceForMainSet, mainSetFunctions);
     // Replace with:
-    var mainSetResult = workoutFunctions.generateMainSet(internalWorkoutType, energySystem, cssSecondsPer100, remainingDistanceForMainSet, mainSetDefinitions);
+    var mainSetResult = workoutFunctions.generateMainSet(internalWorkoutType, energySystem, cssSecondsPer100, remainingDistanceForMainSet, mainSetFunctions);
     sets = mainSetResult.sets;
     mainSetTotalDist = mainSetResult.mainSetTotalDist;
     targetPacePer100 = mainSetResult.targetPacePer100;
@@ -1788,9 +2332,6 @@
       // console.log(`weird amount of time left: ${secondsLeft}. returning original pattern`);
       return generatedPattern;
     }
-
-    // console.log('repeatIntervals');
-
     var seconds = 0;
     var selectedSwim = getThingViaTimeLimit("time", secondsLeft, swims);
 
