@@ -298,9 +298,9 @@ describe('lib/workoutGenerator.js', () => {
                 // _.shuffle is NOT stubbed here anymore.
                 // SIMPLE_SUCCESS_CONFIG uses a single setDefinition, so shuffle order is irrelevant.
                 // Math.random is stubbed globally for the file.
+                randomStub.returns(0); // Set this *before* calling the function that uses Math.random internally
                 result = wg.generateMainSetFromConfig("EN1", 90, distanceForSuccess, SIMPLE_SUCCESS_CONFIG);
-                randomStub.returns(0); // For calculateTargetPace
-                expectedPace = wg.calculateTargetPace(90, SIMPLE_SUCCESS_CONFIG.paceConfig);
+                expectedPace = wg.calculateTargetPace(90, SIMPLE_SUCCESS_CONFIG.paceConfig); // This call will also use randomStub.returns(0)
             });
 
             // No afterEach needed here for _.shuffle
