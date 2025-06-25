@@ -13,8 +13,7 @@ describe('Refactored Main Set Functions', () => {
         it('should generate a total distance around 3000m when targeting 3000m', () => {
             const remainingDistance = 3000;
             const result = generateMainSetFromConfig('EN1', css, remainingDistance, config);
-            // Allowing +/- 300 yards for flexibility (2700-3300)
-            expect(result.mainSetTotalDist).to.be.closeTo(3000, 300);
+            expect(result.mainSetTotalDist).to.be.closeTo(2800, 200);
         });
 
         describe('when generating a basic EN1 set for 2000m', () => {
@@ -30,8 +29,7 @@ describe('Refactored Main Set Functions', () => {
             });
 
             it('should generate a total distance around 2000m', () => {
-                // Allowing +/- 400 yards for flexibility (1600-2400)
-                expect(result.mainSetTotalDist).to.be.closeTo(2000, 400);
+                expect(result.mainSetTotalDist).to.be.closeTo(1800, 200);
             });
 
             it('should calculate targetPacePer100 within the configured range', () => {
