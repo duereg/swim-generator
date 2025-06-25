@@ -1,3 +1,4 @@
+// V3_SCHEMA_UPDATE_MARKER_TESTS
 import { expect } from 'chai';
 import * as mainSetFunctions from '../lib/data/mainSets.js';
 import { ALL_WORKOUT_CONFIGS } from '../lib/data/mainSetConfigs.js';
@@ -14,7 +15,7 @@ describe('Refactored Main Set Functions', () => {
             const remainingDistance = 2000;
             const result = mainSetFunctions.ENDURANCE_BASE('EN1', css, remainingDistance);
             expect(result.sets).to.be.an('array').with.lengthOf(1);
-            expect(result.sets[0]).to.match(/4x500 EN1 focus swim\/kick r60"/);
+            expect(result.sets[0]).to.match(/4x500 EN1 focus swim\/kick r60"/); // No escaped slash needed in string
             expect(result.mainSetTotalDist).to.equal(2000);
             const paceLowerBound = css + config.paceConfig.offset;
             const paceUpperBound = css + config.paceConfig.offset + config.paceConfig.randomRange;
@@ -25,14 +26,14 @@ describe('Refactored Main Set Functions', () => {
         it('should prefer 500s then more reps for tie-breaking total yardage', () => {
             const remainingDistance = 3000;
             const result = mainSetFunctions.ENDURANCE_BASE('EN1', css, remainingDistance);
-            expect(result.sets[0]).to.match(/6x500 EN1 focus swim\/kick r60"/);
+            expect(result.sets[0]).to.match(/6x500 EN1 focus swim\/kick r60"/); // No escaped slash
             expect(result.mainSetTotalDist).to.equal(3000);
         });
 
         it('should cap reps based on maxRepsPerDistance', () => {
             const remainingDistance = 7000;
             const result = mainSetFunctions.ENDURANCE_BASE('EN1', css, remainingDistance);
-            expect(result.sets[0]).to.match(/12x500 EN1 focus swim\/kick r60"/);
+            expect(result.sets[0]).to.match(/12x500 EN1 focus swim\/kick r60"/); // No escaped slash
             expect(result.mainSetTotalDist).to.equal(6000);
         });
 
