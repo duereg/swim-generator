@@ -694,8 +694,6 @@
   } //[13]
   ];
 
-  // lib/workoutGenerator.js - V3_SCHEMA_UPDATE_MARKER_GENERATOR
-
   // --- Helper Functions ---
 
   function calculateTargetPace(cssSecondsPer100, paceConfig) {
@@ -780,18 +778,19 @@
   function generateSet_BestFitSingleRepetition(remainingDistance, strategyConfig, restConfig, energySystem, setFormattingConfig) {
     var setDefinitions = strategyConfig.setDefinitions,
       selectionPreference = strategyConfig.selectionPreference; // Use setDefinitions
+    var shuffledSetDefinitions = _.shuffle(setDefinitions);
     var bestOption = {
       setDef: null,
       reps: 0,
       totalYardage: 0,
       isPreferredShorter: false
     };
-    var _iterator2 = _createForOfIteratorHelper(setDefinitions),
+    var _iterator2 = _createForOfIteratorHelper(shuffledSetDefinitions),
       _step2;
     try {
       for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
         var setDef = _step2.value;
-        // Iterate over setDefinitions
+        // Iterate over shuffledSetDefinitions
         var currentDist = setDef.distance;
         if (setDef.repScheme.type === "dynamic" && remainingDistance >= currentDist) {
           var currentReps = Math.floor(remainingDistance / currentDist);
@@ -868,16 +867,17 @@
     var setDefinitions = strategyConfig.setDefinitions,
       minRepDistanceForFallback = strategyConfig.minRepDistanceForFallback,
       conservativeAdjustment = strategyConfig.conservativeAdjustment; // Use setDefinitions
+    var shuffledSetDefinitions = _.shuffle(setDefinitions);
     var bestRepDist = 0;
     var bestNumReps = 0;
     var smallestRemainder = Infinity;
     var chosenSetDef = null;
-    var _iterator3 = _createForOfIteratorHelper(setDefinitions),
+    var _iterator3 = _createForOfIteratorHelper(shuffledSetDefinitions),
       _step3;
     try {
       for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
         var setDef = _step3.value;
-        // Iterate over setDefinitions
+        // Iterate over shuffledSetDefinitions
         var dist = setDef.distance;
         if (remainingDistance >= dist) {
           var currentNumReps = Math.floor(remainingDistance / dist);
@@ -958,31 +958,32 @@
       setTargetDistanceMaxCap = strategyConfig.setTargetDistanceMaxCap,
       setDefinitions = strategyConfig.setDefinitions,
       repChoiceLogic = strategyConfig.repChoiceLogic;
+    var shuffledSetDefinitions = _.shuffle(setDefinitions);
     var actualTargetYardage = Math.min(remainingDistance, setTargetDistanceMaxCap);
     actualTargetYardage = Math.max(actualTargetYardage, setTargetDistanceMin);
     if (setTargetDistanceMaxDefault) {
       actualTargetYardage = Math.min(actualTargetYardage, setTargetDistanceMaxDefault);
     }
-    var availableRepDistances = setDefinitions.map(function (sd) {
+    var availableRepDistances = shuffledSetDefinitions.map(function (sd) {
       return sd.distance;
     }).sort(function (a, b) {
       return a - b;
     });
-    if (actualTargetYardage < availableRepDistances[0]) {
+    if (availableRepDistances.length === 0 || actualTargetYardage < availableRepDistances[0]) {
       return {
         generatedSets: [],
         totalDistance: 0,
-        strategySpecificSummary: "Target yardage too low for any rep."
+        strategySpecificSummary: "Target yardage too low for any rep or no definitions."
       };
     }
     var chosenSetDef = null;
-    var preferredSetDef = setDefinitions.find(function (sd) {
+    var preferredSetDef = shuffledSetDefinitions.find(function (sd) {
       return sd.distance === repChoiceLogic.preferDistance;
     });
     if (preferredSetDef && actualTargetYardage >= preferredSetDef.distance && actualTargetYardage >= repChoiceLogic.thresholdYardage) {
       chosenSetDef = preferredSetDef;
     } else {
-      var sortedAvailableSetDefs = setDefinitions.filter(function (sd) {
+      var sortedAvailableSetDefs = shuffledSetDefinitions.filter(function (sd) {
         return actualTargetYardage >= sd.distance;
       }).sort(function (a, b) {
         return a.distance - b.distance;
@@ -1032,13 +1033,21 @@
       setDefinitions = strategyConfig.setDefinitions,
       drills = strategyConfig.drills,
       interBlockRest = strategyConfig.interBlockRest;
+    var shuffledSetDefinitions = _.shuffle(setDefinitions);
     var setsOutput = [];
     var accumulatedDistInSet = 0;
-    var availableRepDistances = setDefinitions.map(function (sd) {
+    var availableRepDistances = shuffledSetDefinitions.map(function (sd) {
       return sd.distance;
     }).sort(function (a, b) {
       return a - b;
     });
+    if (availableRepDistances.length === 0) {
+      return {
+        generatedSets: [],
+        totalDistance: 0,
+        strategySpecificSummary: "No set definitions provided for MultiBlock."
+      };
+    }
     var smallestRepDist = availableRepDistances[0];
     var targetOverallYardage = Math.min(remainingDistance, setTargetDistanceMaxCap);
     targetOverallYardage = Math.max(targetOverallYardage, setTargetDistanceMin);
@@ -1059,7 +1068,7 @@
         if (distForCurrentBlockTarget < smallestRepDist) return 1; // continue
 
         // Select a SetDefinition for the block (randomly from those that fit)
-        var suitableSetDefs = setDefinitions.filter(function (sd) {
+        var suitableSetDefs = shuffledSetDefinitions.filter(function (sd) {
           return sd.distance <= distForCurrentBlockTarget;
         });
         if (suitableSetDefs.length === 0) return 1; // continue
@@ -1136,14 +1145,19 @@
     var setDefinitions = strategyConfig.setDefinitions,
       selectionLogic = strategyConfig.selectionLogic,
       fallbackStrategy = strategyConfig.fallbackStrategy; // Use setDefinitions
+    var shuffledSetDefinitions = _.shuffle(setDefinitions);
     var viablePatterns = [];
-    var _iterator4 = _createForOfIteratorHelper(setDefinitions),
+    // console.log('[PatternBased] Initial remainingDistance:', remainingDistance);
+    // console.log('[PatternBased] Shuffled setDefinitions:', JSON.stringify(shuffledSetDefinitions, null, 2));
+    var _iterator4 = _createForOfIteratorHelper(shuffledSetDefinitions),
       _step4;
     try {
       for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
         var setDef = _step4.value;
-        // Iterate setDefinitions
+        // Iterate shuffledSetDefinitions
+        // console.log('[PatternBased] Considering setDef:', JSON.stringify(setDef, null, 2));
         if (setDef.repScheme.type === 'dynamic' && setDef.distance) {
+          // console.log('[PatternBased] Is dynamic');
           if (remainingDistance >= setDef.distance) {
             var _numReps = Math.floor(remainingDistance / setDef.distance);
             if (setDef.repScheme.maxReps) _numReps = Math.min(_numReps, setDef.repScheme.maxReps);
@@ -1153,20 +1167,26 @@
                 // Includes original distance, rest, paceDesc, etc.
                 reps: _numReps,
                 // dist: setDef.distance, // Already in setDef
-                totalDist: _numReps * setDef.distance,
+                totalDistance: _numReps * setDef.distance,
+                // Corrected property name
                 id: setDef.id || "".concat(_numReps, "x").concat(setDef.distance) // Use existing ID or format
               }));
             }
           }
         } else if (setDef.repScheme.type === 'fixed' && setDef.totalDistance) {
+          // console.log('[PatternBased] Is fixed type');
           if (remainingDistance >= setDef.totalDistance) {
+            // console.log('[PatternBased] Adding fixed setDef to viablePatterns:', JSON.stringify(setDef));
             // For fixed, reps and dist are already defined in setDef.repScheme.fixedReps and setDef.distance
             viablePatterns.push(_objectSpread2(_objectSpread2({}, setDef), {}, {
               reps: setDef.repScheme.fixedReps
             }));
+          } else {
+            // console.log('[PatternBased] Fixed setDef totalDistance too high:', setDef.totalDistance);
           }
         }
       }
+      // console.log('[PatternBased] ViablePatterns:', JSON.stringify(viablePatterns, null, 2));
     } catch (err) {
       _iterator4.e(err);
     } finally {
@@ -1174,24 +1194,29 @@
     }
     var bestFitSet = null;
     if (viablePatterns.length > 0) {
+      // console.log('[PatternBased] Viable patterns found. SelectionLogic:', selectionLogic);
       if (selectionLogic === "maxAchievedDistance") {
         viablePatterns.sort(function (a, b) {
-          if (b.totalDist !== a.totalDist) return b.totalDist - a.totalDist;
-          // Approx original index for tie-breaking if needed (indexOf may not work directly on derived objects)
-          return setDefinitions.findIndex(function (sd) {
+          if (b.totalDistance !== a.totalDistance) return b.totalDistance - a.totalDistance;
+          // Approx original index for tie-breaking (now randomized due to shuffledSetDefinitions)
+          // Ensure 'a' and 'b' passed to findIndex are from the original shuffledSetDefinitions if 'id' is not unique enough
+          // or if viablePatterns objects are modified copies that break === identity.
+          // However, given typical use, matching by 'id' should be robust enough.
+          return shuffledSetDefinitions.findIndex(function (sd) {
             return sd.id === a.id;
-          }) - setDefinitions.findIndex(function (sd) {
+          }) - shuffledSetDefinitions.findIndex(function (sd) {
             return sd.id === b.id;
           });
         });
         bestFitSet = viablePatterns[0];
       } else if (selectionLogic === "prioritizeMaxDistanceThenRandom") {
         var maxDist = 0;
+        // Ensure using totalDistance, which is the correct property name from setDef
         viablePatterns.forEach(function (p) {
-          if (p.totalDist > maxDist) maxDist = p.totalDist;
+          if (p.totalDistance > maxDist) maxDist = p.totalDistance;
         });
         var bestDistancePatterns = viablePatterns.filter(function (p) {
-          return p.totalDist === maxDist;
+          return p.totalDistance === maxDist;
         });
         if (bestDistancePatterns.length > 0) {
           bestFitSet = bestDistancePatterns[Math.floor(Math.random() * bestDistancePatterns.length)];
@@ -1202,15 +1227,20 @@
     }
     if (!bestFitSet && fallbackStrategy && fallbackStrategy.setDefinitions && remainingDistance >= fallbackStrategy.minRepDistance) {
       // Check fallbackStrategy.setDefinitions
+      // If fallbackStrategy.setDefinitions are derived from the main setDefinitions, they should be shuffled too.
+      // Assuming they might be a distinct list, we shuffle them here if they exist.
+      // If they are guaranteed to be a subset of the already shuffled main list, this specific shuffle might be redundant
+      // but harmless. If they are a completely separate list, this is necessary.
+      var shuffledFallbackSetDefinitions = fallbackStrategy.setDefinitions ? _.shuffle(fallbackStrategy.setDefinitions) : [];
       if (fallbackStrategy.type === "simpleRepsMaxDistance") {
         var bestFallbackOption = null;
         var maxFallbackYardage = 0;
-        var _iterator5 = _createForOfIteratorHelper(fallbackStrategy.setDefinitions),
+        var _iterator5 = _createForOfIteratorHelper(shuffledFallbackSetDefinitions),
           _step5;
         try {
           for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
             var fbSetDef = _step5.value;
-            // Iterate fallbackStrategy.setDefinitions
+            // Iterate shuffledFallbackSetDefinitions
             if (remainingDistance >= fbSetDef.distance) {
               var numReps = Math.floor(remainingDistance / fbSetDef.distance);
               if (fbSetDef.repScheme && fbSetDef.repScheme.maxReps) {
@@ -1226,9 +1256,11 @@
                   maxFallbackYardage = currentYardage;
                   bestFallbackOption = _objectSpread2(_objectSpread2({}, fbSetDef), {}, {
                     reps: numReps,
-                    totalDist: currentYardage,
+                    totalDistance: currentYardage,
+                    // Corrected here
                     id: fbSetDef.id || "".concat(numReps, "x").concat(fbSetDef.distance, " (fallback)")
                   });
+                  // console.log(`[FallbackDebug] Set bestFallbackOption: ${JSON.stringify(bestFallbackOption, null, 2)} with yardage ${currentYardage}`);
                 }
               }
             }
@@ -1239,9 +1271,13 @@
           _iterator5.f();
         }
         if (bestFallbackOption) bestFitSet = bestFallbackOption;
+        // console.log(`[FallbackDebug] After loop, bestFallbackOption: ${JSON.stringify(bestFallbackOption, null, 2)}`);
       }
     }
+    // console.log(`[FallbackDebug] Before final return, bestFitSet: ${JSON.stringify(bestFitSet, null, 2)}`);
+
     if (bestFitSet) {
+      // console.log(`[FallbackDebug] bestFitSet IS valid, creating setInfo.`);
       var rest = bestFitSet.rest || getRestString(bestFitSet.distance, restConfig, bestFitSet.rest);
       var setInfo = {
         reps: bestFitSet.reps,
@@ -1253,7 +1289,8 @@
       };
       return {
         generatedSets: [setInfo],
-        totalDistance: bestFitSet.totalDist,
+        totalDistance: bestFitSet.totalDistance,
+        // Corrected from totalDist
         strategySpecificSummary: bestFitSet.id || "".concat(bestFitSet.reps, "x").concat(bestFitSet.distance),
         restSummary: rest,
         paceDescription: bestFitSet.paceDescription
