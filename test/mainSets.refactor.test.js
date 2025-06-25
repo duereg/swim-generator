@@ -84,7 +84,7 @@ describe('Refactored Main Set Functions', () => {
     });
 
     describe('MAX_SPRINT (SP2)', () => {
-        const config = ALL_WORKOUT_CONFIGS.MAX_SPRINT;
+        // const config = ALL_WORKOUT_CONFIGS.MAX_SPRINT; // Removed to address ESLint false positive
         const css = 75;
 
         const parseRestToSeconds = (restString) => {

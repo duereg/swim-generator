@@ -52,7 +52,7 @@ describe('generateWorkout Distance Adherence Tests', () => {
 
             expect(generatedDist, `Generated distance should not be null (iteration ${i + 1}) for ${workoutType} ${targetDist}yd`).to.be.a('number');
             if (generatedDist === null) {
-                console.log(`Failed to parse distance for workout (iter ${i+1}): ${workoutString}`);
+                // console.log(`Failed to parse distance for workout (iter ${i+1}): ${workoutString}`);
                 continue; // Skip further checks if null, assertion above will fail test
             }
 
