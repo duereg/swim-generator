@@ -31,14 +31,22 @@ describe('lib/workoutGenerator.js', () => {
     });
 
     describe('calculateTargetPace', () => {
-        it('should return cssSecondsPer100 if no paceConfig is provided', () => {
-            expect(wg.calculateTargetPace(90, null)).to.equal(90);
-            expect(wg.calculateTargetPace(90, undefined)).to.equal(90);
+        describe('when no paceConfig is provided', () => {
+            it('should return cssSecondsPer100 for null paceConfig', () => {
+                expect(wg.calculateTargetPace(90, null)).to.equal(90);
+            });
+            it('should return cssSecondsPer100 for undefined paceConfig', () => {
+                expect(wg.calculateTargetPace(90, undefined)).to.equal(90);
+            });
         });
 
-        it('should return cssSecondsPer100 if paceConfig is invalid or css is not a number', () => {
-            expect(wg.calculateTargetPace("invalid", MOCK_PACE_CONFIG_PLUS)).to.equal("invalid");
-            expect(wg.calculateTargetPace(90, {})).to.equal(90);
+        describe('when paceConfig is invalid or css is not a number', () => {
+            it('should return original css if css is not a number', () => {
+                expect(wg.calculateTargetPace("invalid", MOCK_PACE_CONFIG_PLUS)).to.equal("invalid");
+            });
+            it('should return cssSecondsPer100 for empty paceConfig object', () => {
+                expect(wg.calculateTargetPace(90, {})).to.equal(90);
+            });
         });
 
         it('should apply positive offset correctly', () => {
@@ -86,9 +94,13 @@ describe('lib/workoutGenerator.js', () => {
             expect(wg.formatDescriptiveMessage(template, params)).to.equal("Type: EN2, Detail:");
         });
 
-        it('should return a default message if template is null or undefined', () => {
-            expect(wg.formatDescriptiveMessage(null, {})).to.equal("No descriptive message template provided.");
-            expect(wg.formatDescriptiveMessage(undefined, {})).to.equal("No descriptive message template provided.");
+        describe('when template is null or undefined', () => {
+            it('should return a default message for null template', () => {
+                expect(wg.formatDescriptiveMessage(null, {})).to.equal("No descriptive message template provided.");
+            });
+            it('should return a default message for undefined template', () => {
+                expect(wg.formatDescriptiveMessage(undefined, {})).to.equal("No descriptive message template provided.");
+            });
         });
     });
 
@@ -124,10 +136,16 @@ describe('lib/workoutGenerator.js', () => {
     });
 
     describe('generatePaceSummary', () => {
-        it('should return "CSS" if no paceConfig or empty paceConfig', () => {
-            expect(wg.generatePaceSummary(null)).to.equal("CSS");
-            expect(wg.generatePaceSummary({})).to.equal("CSS");
-            expect(wg.generatePaceSummary({ paceConfig: {} })).to.equal("CSS");
+        describe('when paceConfig is absent or empty', () => {
+            it('should return "CSS" if strategyConfig is null', () => {
+                expect(wg.generatePaceSummary(null)).to.equal("CSS");
+            });
+            it('should return "CSS" if strategyConfig is an empty object', () => {
+                expect(wg.generatePaceSummary({})).to.equal("CSS");
+            });
+            it('should return "CSS" if strategyConfig.paceConfig is an empty object', () => {
+                expect(wg.generatePaceSummary({ paceConfig: {} })).to.equal("CSS");
+            });
         });
 
         it('should return "CSS" if offset is 0 and no randomRange', () => {
@@ -193,20 +211,45 @@ describe('lib/workoutGenerator.js', () => {
             if (repsFor100) expect(repsFor100).to.be.at.most(10);
         });
 
-        it('should return empty if no suitable sets found', () => {
-            const result = wg.generateSet(mockStrategyConfig, 25);
-            expect(result.totalDistance).to.equal(0);
-            expect(result.generatedSets.length).to.equal(0);
-            expect(result.strategySpecificSummary).to.equal("No suitable reps found.");
+        describe('when no suitable sets are found (e.g., distance too small)', () => {
+            let result;
+            beforeEach(() => {
+                result = wg.generateSet(mockStrategyConfig, 25);
+            });
+
+            it('should return totalDistance of 0', () => {
+                expect(result.totalDistance).to.equal(0);
+            });
+            it('should return an empty generatedSets array', () => {
+                expect(result.generatedSets.length).to.equal(0);
+            });
+            it('should return "No suitable reps found." in strategySpecificSummary', () => {
+                expect(result.strategySpecificSummary).to.equal("No suitable reps found.");
+            });
         });
-         it('should generate multiple types of sets if needed to meet distance', () => {
-            const result = wg.generateSet(mockStrategyConfig, 350);
-            expect(result.totalDistance).to.equal(350);
-            expect(result.generatedSets.length).to.equal(2);
-            expect(result.generatedSets[0].dist).to.equal(100);
-            expect(result.generatedSets[0].reps).to.equal(3);
-            expect(result.generatedSets[1].dist).to.equal(50);
-            expect(result.generatedSets[1].reps).to.equal(1);
+
+        describe('when multiple types of sets are needed to meet distance (350m)', () => {
+            let result;
+            beforeEach(() => {
+                 // With no shuffle (order: 100, 200, 50):
+                 // 3x100 (300yd), remaining 50. Then 1x50. Total 350.
+                result = wg.generateSet(mockStrategyConfig, 350);
+            });
+
+            it('should generate a totalDistance of 350', () => {
+                expect(result.totalDistance).to.equal(350);
+            });
+            it('should generate 2 set items', () => {
+                expect(result.generatedSets.length).to.equal(2);
+            });
+            it('should have the first set as 3x100', () => {
+                expect(result.generatedSets[0].dist).to.equal(100);
+                expect(result.generatedSets[0].reps).to.equal(3);
+            });
+            it('should have the second set as 1x50', () => {
+                expect(result.generatedSets[1].dist).to.equal(50);
+                expect(result.generatedSets[1].reps).to.equal(1);
+            });
         });
     });
 
@@ -233,34 +276,87 @@ describe('lib/workoutGenerator.js', () => {
         });
 
         afterEach(() => {
-            generateSetStub.restore(); // wg.generateSet is already restored by global afterEach if needed
+            // wg.generateSet is stubbed as generateSetStub here.
+            // The global afterEach in this file should handle restoring stubs on 'wg' if generateSet was stubbed on 'wg.generateSet'.
+            // If generateSetStub is a standalone stub of an imported function, it needs its own restore.
+            // Let's ensure generateSetStub is restored.
+            if (generateSetStub && generateSetStub.restore) {
+                 generateSetStub.restore();
+            }
         });
 
-        it('should return a correctly structured main set when generation is successful', () => {
-            const result = wg.generateMainSetFromConfig("EN1", 90, 500, MOCK_STRATEGY_CONFIG);
-            expect(result).to.have.all.keys('sets', 'mainSetTotalDist', 'targetPacePer100', 'descriptiveMessage');
-            expect(result.mainSetTotalDist).to.equal(200);
-            expect(result.sets).to.be.an('array').with.lengthOf(1);
-            expect(result.sets[0]).to.include("2x100 swim");
-            expect(result.descriptiveMessage).to.match(/^Success: TestType - 2x100 \(EN1\) 200yds @ CSS \+5-7s\/100m/);
-            randomStub.returns(0);
-            const expectedPace = wg.calculateTargetPace(90, MOCK_STRATEGY_CONFIG.paceConfig);
-            expect(result.targetPacePer100).to.equal(expectedPace);
+        describe('when generation is successful', () => {
+            let result;
+            let expectedPace;
+            beforeEach(() => {
+                // Reset generateSetStub to return the successful mock for this describe block
+                // This is important if other tests in generateMainSetFromConfig change its behavior
+                 if (generateSetStub && generateSetStub.restore) generateSetStub.restore(); // ensure clean slate
+                 generateSetStub = sinon.stub(wg, 'generateSet').returns({
+                    generatedSets: [{ reps: 2, dist: 100, restString: "r10\"", activity: "swim", setRest: "rest 30 seconds" }],
+                    totalDistance: 200,
+                    strategySpecificSummary: "2x100"
+                });
+
+                result = wg.generateMainSetFromConfig("EN1", 90, 500, MOCK_STRATEGY_CONFIG);
+                randomStub.returns(0);
+                expectedPace = wg.calculateTargetPace(90, MOCK_STRATEGY_CONFIG.paceConfig);
+            });
+
+            it('should return an object with the correct keys', () => {
+                expect(result).to.have.all.keys('sets', 'mainSetTotalDist', 'targetPacePer100', 'descriptiveMessage');
+            });
+            it('should set mainSetTotalDist from generateSet result', () => {
+                expect(result.mainSetTotalDist).to.equal(200);
+            });
+            it('should return generated sets as an array of length 1', () => {
+                expect(result.sets).to.be.an('array').with.lengthOf(1);
+            });
+            it('should format the set string correctly', () => {
+                expect(result.sets[0]).to.include("2x100 swim");
+            });
+            it('should generate a success descriptiveMessage', () => {
+                expect(result.descriptiveMessage).to.match(/^Success: TestType - 2x100 \(EN1\) 200yds @ CSS \+5-7s\/100m/);
+            });
+            it('should calculate targetPacePer100 correctly', () => {
+                expect(result.targetPacePer100).to.equal(expectedPace);
+            });
         });
 
-        it('should handle generation failure from generateSet', () => {
-            generateSetStub.returns({ generatedSets: [], totalDistance: 0, strategySpecificSummary: "Failed." });
-            const result = wg.generateMainSetFromConfig("EN1", 90, 50, MOCK_STRATEGY_CONFIG);
-            expect(result.mainSetTotalDist).to.equal(0);
-            expect(result.sets.length).to.equal(0);
-            expect(result.descriptiveMessage).to.match(/^Fail: TestType \(EN1\) 50yds/);
+        describe('when generateSet returns no sets (generation failure)', () => {
+            let result;
+            beforeEach(() => {
+                if (generateSetStub && generateSetStub.restore) generateSetStub.restore();
+                generateSetStub = sinon.stub(wg, 'generateSet').returns({ generatedSets: [], totalDistance: 0, strategySpecificSummary: "Failed." });
+                result = wg.generateMainSetFromConfig("EN1", 90, 50, MOCK_STRATEGY_CONFIG);
+            });
+
+            it('should set mainSetTotalDist to 0', () => {
+                expect(result.mainSetTotalDist).to.equal(0);
+            });
+            it('should return an empty sets array', () => {
+                expect(result.sets.length).to.equal(0);
+            });
+            it('should generate a failure descriptiveMessage', () => {
+                expect(result.descriptiveMessage).to.match(/^Fail: TestType \(EN1\) 50yds/);
+            });
         });
 
-        it('should return an error message if strategyConfig is not provided', () => {
-            const result = wg.generateMainSetFromConfig("EN1", 90, 500, null);
-            expect(result.descriptiveMessage).to.equal("Error: Workout configuration not provided.");
-            expect(result.mainSetTotalDist).to.equal(0);
-            expect(result.sets.length).to.equal(0);
+        describe('when strategyConfig is not provided', () => {
+            let result;
+            beforeEach(() => {
+                result = wg.generateMainSetFromConfig("EN1", 90, 500, null);
+            });
+
+            it('should return an error descriptiveMessage', () => {
+                expect(result.descriptiveMessage).to.equal("Error: Workout configuration not provided.");
+            });
+            it('should set mainSetTotalDist to 0', () => {
+                expect(result.mainSetTotalDist).to.equal(0);
+            });
+            it('should return an empty sets array', () => {
+                expect(result.sets.length).to.equal(0);
+            });
         });
     });
 });

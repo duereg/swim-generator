@@ -138,7 +138,7 @@ describe.skip('generateWorkout Integration Tests', () => {
 
     // This will be the actual result from generateWarmup when Math.random() is 0
     // and totalDistance allows for a warmup.
-    const EXPECTED_WARMUP_FULL = { desc: "200 no fins, 200 w fins swim", dist: 400, type: "swim" };
+    // const EXPECTED_WARMUP_FULL = { desc: "200 no fins, 200 w fins swim", dist: 400, type: "swim" }; // Unused
     const EXPECTED_NO_WARMUP_SHORT_WORKOUT = { desc: "No warmup (short workout)", dist: 0, type: "none" };
 
 
