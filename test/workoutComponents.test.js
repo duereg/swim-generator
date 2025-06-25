@@ -14,24 +14,16 @@ import _ from 'lodash'; // Import lodash for _.shuffle stubbing
 
 describe('Workout Components', () => {
     let randomStub;
+    let shuffleStub; // Define shuffleStub here
 
     beforeEach(() => {
         randomStub = sinon.stub(Math, 'random');
+        shuffleStub = sinon.stub(_, 'shuffle').callsFake(array => [...array]); // Stub shuffle here
     });
 
     afterEach(() => {
-        randomStub.restore();
-        // Restore any other spies/stubs created in tests if they are on module-level objects
-        // For generateMainSetFromConfigSpy, it's created in a nested beforeEach,
-        // but best practice is to restore what you create.
-        // If generateMainSetFromConfigSpy is consistently created, it can be restored here.
-        // However, it's safer to restore it in its own describe block's afterEach.
-        // For now, the spy is on an imported module, sinon should handle it with global restore if needed.
-        // Let's assume sinon.restore() in the test runner or a global afterEach handles this for now.
-        // The error was "Cannot redefine property", suggesting it wasn't restored.
-        // The spy is created in the beforeEach of 'describe('generateMainSet', ...)'
-        // It should be restored in an afterEach for that same describe block.
-        // Let's add it there.
+        if (randomStub) randomStub.restore();
+        if (shuffleStub) shuffleStub.restore(); // Restore shuffle here
     });
 
     describe('generateCooldown', () => {
@@ -101,18 +93,11 @@ describe('Workout Components', () => {
             let result;
 
             beforeEach(() => {
-                // Stubbing Math.random because calculateTargetPace (called by generateMainSetFromConfig) uses it.
-                // Also, generateSet (called by generateMainSetFromConfig) uses _.shuffle.
-                // To make outputs somewhat predictable for descriptiveMessage checks.
-                sinon.stub(Math, 'random').returns(0);
-                sinon.stub(_, 'shuffle').callsFake(array => [...array]);
+                // Math.random and _.shuffle are now stubbed in the top-level beforeEach
                 result = generateMainSet(workoutType, mockEnergySystem, mockCssSecondsPer100, mockRemainingDistance);
             });
 
-            afterEach(() => {
-                Math.random.restore();
-                _.shuffle.restore();
-            });
+            // No longer need afterEach here to restore Math.random or _.shuffle
 
             it('should return a descriptiveMessage related to ENDURANCE_BASE', () => {
                 // Check for keywords, as exact message depends on actual generateMainSetFromConfig output
@@ -130,15 +115,11 @@ describe('Workout Components', () => {
             let result;
 
             beforeEach(() => {
-                sinon.stub(Math, 'random').returns(0);
-                sinon.stub(_, 'shuffle').callsFake(array => [...array]);
+                // Math.random and _.shuffle are now stubbed in the top-level beforeEach
                 result = generateMainSet(workoutType, specificEnergySystem, mockCssSecondsPer100, mockRemainingDistance);
             });
 
-            afterEach(() => {
-                Math.random.restore();
-                _.shuffle.restore();
-            });
+            // No longer need afterEach here
 
             it('should return a descriptiveMessage related to SPEED_ENDURANCE', () => {
                 expect(result.descriptiveMessage).to.include(ALL_WORKOUT_CONFIGS.SPEED_ENDURANCE.workoutTypeName);
@@ -150,15 +131,11 @@ describe('Workout Components', () => {
             const unknownWorkoutType = 'UNKNOWN_TYPE';
             let result;
             beforeEach(() => {
-                sinon.stub(Math, 'random').returns(0);
-                sinon.stub(_, 'shuffle').callsFake(array => [...array]);
+                // Math.random and _.shuffle are now stubbed in the top-level beforeEach
                 result = generateMainSet(unknownWorkoutType, mockEnergySystem, mockCssSecondsPer100, mockRemainingDistance);
             });
 
-            afterEach(() => {
-                Math.random.restore();
-                _.shuffle.restore();
-            });
+            // No longer need afterEach here
 
             it('should return a descriptiveMessage indicating unknown type and fallback to GENERAL_ENDURANCE', () => {
                 expect(result.descriptiveMessage).to.include(`Unknown workout type: ${unknownWorkoutType}`);
@@ -171,15 +148,11 @@ describe('Workout Components', () => {
             const workoutType = 'GENERAL_ENDURANCE';
             let result;
             beforeEach(() => {
-                sinon.stub(Math, 'random').returns(0);
-                sinon.stub(_, 'shuffle').callsFake(array => [...array]);
+                // Math.random and _.shuffle are now stubbed in the top-level beforeEach
                 result = generateMainSet(workoutType, mockEnergySystem, mockCssSecondsPer100, mockRemainingDistance);
             });
 
-            afterEach(() => {
-                Math.random.restore();
-                _.shuffle.restore();
-            });
+            // No longer need afterEach here
 
             it('should return a descriptiveMessage related to GENERAL_ENDURANCE', () => {
                 expect(result.descriptiveMessage).to.include(ALL_WORKOUT_CONFIGS.GENERAL_ENDURANCE.workoutTypeName);
@@ -210,36 +183,29 @@ describe('Workout Components', () => {
                 const workoutType = 'MAX_SPRINT'; // Example: MAX_SPRINT might generate small sets
                 const smallRemainingDistance = 110; // A distance that might trigger small initial set but > 100
 
-                sinon.stub(_, 'shuffle').callsFake(array => [...array]); // For predictability
-                sinon.stub(Math, 'random').returns(0);
+                // Math.random and _.shuffle are stubbed in top-level beforeEach for the main 'Workout Components'
+                // No need to re-stub/restore here if those top-level stubs provide the desired predictability.
+                // If specific values for Math.random are needed for this test, they could be set here
+                // using randomStub.returns(...) if randomStub is made available to this scope.
+                // For now, assume top-level stubs are sufficient.
 
                 const result = generateMainSet(workoutType, mockEnergySystem, mockCssSecondsPer100, smallRemainingDistance);
 
-                // Assertions would check:
-                // - result.descriptiveMessage includes "(Fallback to general endurance...)"
-                // - result.mainSetTotalDist corresponds to what GENERAL_ENDURANCE would generate for smallRemainingDistance.
-                // For now, this is too complex to reliably set up with current constraints.
-                // console.log('Fallback test for MAX_SPRINT 110m:', JSON.stringify(result, null, 2)); // Manual inspection - REMOVED
                 expect(result.descriptiveMessage).to.include("(Fallback to general endurance due to low generated distance for selected workout type).");
 
-                _.shuffle.restore();
-                Math.random.restore();
+                // No restore needed here as it's handled by top-level afterEach
             });
 
             it('should NOT fallback to GENERAL_ENDURANCE if specific generator is already GENERAL_ENDURANCE and returns small distance', () => {
                 const workoutType = 'GENERAL_ENDURANCE';
-                const verySmallDistance = 50; // Distance that should result in a small set from GENERAL_ENDURANCE
+                const verySmallDistance = 50;
 
-                sinon.stub(_, 'shuffle').callsFake(array => [...array]);
-                sinon.stub(Math, 'random').returns(0);
+                // Math.random and _.shuffle are stubbed in top-level beforeEach. Assume they are set to 0 / pass-through.
 
                 const result = generateMainSet(workoutType, mockEnergySystem, mockCssSecondsPer100, verySmallDistance);
 
-                _.shuffle.restore();
-                Math.random.restore();
+                // No restore needed here.
 
-                // Expect that the total distance is small (as generated by GENERAL_ENDURANCE for 50yd)
-                // and that no fallback message is present.
                 // The exact small distance depends on GENERAL_ENDURANCE config for 50yd.
                 // Let's assume it can generate 50yd (e.g., 1x50).
                 expect(result.mainSetTotalDist).to.be.at.most(verySmallDistance + 50); // Allow some leeway if it picks slightly larger min

@@ -185,14 +185,14 @@ describe('lib/workoutGenerator.js', () => {
             setRest: "60",
             setFormatting: MOCK_SET_FORMATTING
         };
-        let shuffleStub;
+        let shuffleStub; // Declare shuffleStub in the describe scope
 
         beforeEach(() => {
-            shuffleStub = sinon.stub(_, 'shuffle').callsFake(array => [...array]);
+            shuffleStub = sinon.stub(_, 'shuffle').callsFake(array => [...array]); // Assign here
         });
 
         afterEach(() => {
-            shuffleStub.restore();
+            if (shuffleStub) shuffleStub.restore(); // Restore here
         });
 
         it('should generate sets to meet setDistance using dynamic reps', () => {
@@ -295,23 +295,15 @@ describe('lib/workoutGenerator.js', () => {
             const distanceForSuccess = 200; // Should generate 2x100
 
             beforeEach(() => {
-                // _.shuffle is stubbed in the outer describe block for generateSet tests,
-                // ensure it's also stubbed here if generateSet relies on it for predictability
-                // (it was already stubbed in the parent describe block for 'generateSet' tests)
-                // For these tests, we want generateSet to be predictable.
-                // The global beforeEach for the file stubs Math.random.
-                // The beforeEach for 'generateSet' stubs _.shuffle. We need that here too.
-                sinon.stub(_, 'shuffle').callsFake(array => [...array]);
-
-
+                // _.shuffle is NOT stubbed here anymore.
+                // SIMPLE_SUCCESS_CONFIG uses a single setDefinition, so shuffle order is irrelevant.
+                // Math.random is stubbed globally for the file.
                 result = wg.generateMainSetFromConfig("EN1", 90, distanceForSuccess, SIMPLE_SUCCESS_CONFIG);
                 randomStub.returns(0); // For calculateTargetPace
                 expectedPace = wg.calculateTargetPace(90, SIMPLE_SUCCESS_CONFIG.paceConfig);
             });
 
-            afterEach(() => {
-                _.shuffle.restore();
-            });
+            // No afterEach needed here for _.shuffle
 
             it('should return an object with the correct keys', () => {
                 expect(result).to.have.all.keys('sets', 'mainSetTotalDist', 'targetPacePer100', 'descriptiveMessage');
@@ -339,13 +331,12 @@ describe('lib/workoutGenerator.js', () => {
             const distanceForFailure = 50; // Too small for setDefinitions in SIMPLE_FAIL_CONFIG (min 1000)
 
             beforeEach(() => {
-                sinon.stub(_, 'shuffle').callsFake(array => [...array]);
+                // _.shuffle is NOT stubbed here.
+                // SIMPLE_FAIL_CONFIG uses a single setDefinition, shuffle order is irrelevant.
                 result = wg.generateMainSetFromConfig("EN1", 90, distanceForFailure, SIMPLE_FAIL_CONFIG);
             });
 
-            afterEach(() => {
-                _.shuffle.restore();
-            });
+            // No afterEach needed here for _.shuffle
 
             it('should set mainSetTotalDist to 0', () => {
                 expect(result.mainSetTotalDist).to.equal(0);

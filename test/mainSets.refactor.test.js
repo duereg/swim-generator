@@ -118,8 +118,8 @@ describe('Refactored Main Set Functions', () => {
                 expect(result.mainSetTotalDist).to.be.closeTo(400, 100);
             });
 
-            it('should generate a single set item (block)', () => { // Corrected to 1 based on latest log (actual was 1)
-                expect(setItems.length).to.equal(1);
+            it('should generate two set items (blocks)', () => { // Reverted to 2 based on user feedback (AssertionError: expected 1 to equal 2)
+                expect(setItems.length).to.equal(2);
             });
         });
     });
