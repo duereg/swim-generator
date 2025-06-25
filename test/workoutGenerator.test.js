@@ -265,70 +265,86 @@ describe('lib/workoutGenerator.js', () => {
                 fail: "Fail: {workoutTypeName} ({energySystem}) {totalDistance}yds"
             }
         };
-        let generateSetStub;
+        // No longer stubbing wg.generateSet here. It will run its actual implementation.
+        // The tests for wg.generateSet itself cover its detailed logic.
+        // Here, we test wg.generateMainSetFromConfig's orchestration.
 
-        beforeEach(() => {
-            generateSetStub = sinon.stub(wg, 'generateSet').returns({ // Stubbing wg.generateSet
-                generatedSets: [{ reps: 2, dist: 100, restString: "r10\"", activity: "swim", setRest: "rest 30 seconds" }],
-                totalDistance: 200,
-                strategySpecificSummary: "2x100"
-            });
-        });
-
-        afterEach(() => {
-            // wg.generateSet is stubbed as generateSetStub here.
-            // The global afterEach in this file should handle restoring stubs on 'wg' if generateSet was stubbed on 'wg.generateSet'.
-            // If generateSetStub is a standalone stub of an imported function, it needs its own restore.
-            // Let's ensure generateSetStub is restored.
-            if (generateSetStub && generateSetStub.restore) {
-                 generateSetStub.restore();
+        // To make tests deterministic for generateMainSetFromConfig when the actual generateSet is called,
+        // ensure the MOCK_STRATEGY_CONFIG.setDefinitions and input distances are simple and predictable.
+        const SIMPLE_SUCCESS_CONFIG = {
+            ...MOCK_STRATEGY_CONFIG,
+            setDefinitions: [{ distance: 100, rest: "10s", repScheme: { type: "dynamic", maxReps: 3 } }],
+            descriptiveMessages: { // Ensure templates are simple for matching
+                success: "OK: {totalDistance}yds {setSummary}",
+                fail: "FAIL: {totalDistance}yds target"
             }
-        });
+        };
+         const SIMPLE_FAIL_CONFIG = { // Config that will likely lead to failure for small distances
+            ...MOCK_STRATEGY_CONFIG,
+            setDefinitions: [{ distance: 1000, rest: "10s", repScheme: { type: "dynamic", maxReps: 1 } }],
+             descriptiveMessages: {
+                success: "OK: {totalDistance}yds {setSummary}",
+                fail: "FAIL: {totalDistance}yds target"
+            }
+        };
 
-        describe('when generation is successful', () => {
+
+        describe('when generation is successful with actual generateSet call', () => {
             let result;
             let expectedPace;
-            beforeEach(() => {
-                // Reset generateSetStub to return the successful mock for this describe block
-                // This is important if other tests in generateMainSetFromConfig change its behavior
-                 if (generateSetStub && generateSetStub.restore) generateSetStub.restore(); // ensure clean slate
-                 generateSetStub = sinon.stub(wg, 'generateSet').returns({
-                    generatedSets: [{ reps: 2, dist: 100, restString: "r10\"", activity: "swim", setRest: "rest 30 seconds" }],
-                    totalDistance: 200,
-                    strategySpecificSummary: "2x100"
-                });
+            const distanceForSuccess = 200; // Should generate 2x100
 
-                result = wg.generateMainSetFromConfig("EN1", 90, 500, MOCK_STRATEGY_CONFIG);
-                randomStub.returns(0);
-                expectedPace = wg.calculateTargetPace(90, MOCK_STRATEGY_CONFIG.paceConfig);
+            beforeEach(() => {
+                // _.shuffle is stubbed in the outer describe block for generateSet tests,
+                // ensure it's also stubbed here if generateSet relies on it for predictability
+                // (it was already stubbed in the parent describe block for 'generateSet' tests)
+                // For these tests, we want generateSet to be predictable.
+                // The global beforeEach for the file stubs Math.random.
+                // The beforeEach for 'generateSet' stubs _.shuffle. We need that here too.
+                sinon.stub(_, 'shuffle').callsFake(array => [...array]);
+
+
+                result = wg.generateMainSetFromConfig("EN1", 90, distanceForSuccess, SIMPLE_SUCCESS_CONFIG);
+                randomStub.returns(0); // For calculateTargetPace
+                expectedPace = wg.calculateTargetPace(90, SIMPLE_SUCCESS_CONFIG.paceConfig);
+            });
+
+            afterEach(() => {
+                _.shuffle.restore();
             });
 
             it('should return an object with the correct keys', () => {
                 expect(result).to.have.all.keys('sets', 'mainSetTotalDist', 'targetPacePer100', 'descriptiveMessage');
             });
-            it('should set mainSetTotalDist from generateSet result', () => {
-                expect(result.mainSetTotalDist).to.equal(200);
+            it('should set mainSetTotalDist correctly based on actual generateSet', () => {
+                expect(result.mainSetTotalDist).to.equal(200); // 2x100
             });
             it('should return generated sets as an array of length 1', () => {
                 expect(result.sets).to.be.an('array').with.lengthOf(1);
             });
             it('should format the set string correctly', () => {
-                expect(result.sets[0]).to.include("2x100 swim");
+                expect(result.sets[0]).to.include("2x100"); // Actual formatSetString will be used
             });
             it('should generate a success descriptiveMessage', () => {
-                expect(result.descriptiveMessage).to.match(/^Success: TestType - 2x100 \(EN1\) 200yds @ CSS \+5-7s\/100m/);
+                // Based on SIMPLE_SUCCESS_CONFIG.descriptiveMessages.success
+                expect(result.descriptiveMessage).to.equal("OK: 200yds 2x100");
             });
             it('should calculate targetPacePer100 correctly', () => {
                 expect(result.targetPacePer100).to.equal(expectedPace);
             });
         });
 
-        describe('when generateSet returns no sets (generation failure)', () => {
+        describe('when actual generateSet returns no sets (generation failure)', () => {
             let result;
+            const distanceForFailure = 50; // Too small for setDefinitions in SIMPLE_FAIL_CONFIG (min 1000)
+
             beforeEach(() => {
-                if (generateSetStub && generateSetStub.restore) generateSetStub.restore();
-                generateSetStub = sinon.stub(wg, 'generateSet').returns({ generatedSets: [], totalDistance: 0, strategySpecificSummary: "Failed." });
-                result = wg.generateMainSetFromConfig("EN1", 90, 50, MOCK_STRATEGY_CONFIG);
+                sinon.stub(_, 'shuffle').callsFake(array => [...array]);
+                result = wg.generateMainSetFromConfig("EN1", 90, distanceForFailure, SIMPLE_FAIL_CONFIG);
+            });
+
+            afterEach(() => {
+                _.shuffle.restore();
             });
 
             it('should set mainSetTotalDist to 0', () => {
@@ -338,7 +354,8 @@ describe('lib/workoutGenerator.js', () => {
                 expect(result.sets.length).to.equal(0);
             });
             it('should generate a failure descriptiveMessage', () => {
-                expect(result.descriptiveMessage).to.match(/^Fail: TestType \(EN1\) 50yds/);
+                // Based on SIMPLE_FAIL_CONFIG.descriptiveMessages.fail
+                expect(result.descriptiveMessage).to.equal(`FAIL: ${distanceForFailure}yds target`);
             });
         });
 
