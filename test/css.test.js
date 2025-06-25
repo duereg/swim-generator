@@ -129,23 +129,20 @@ describe('generateWorkout Distance Adherence Tests', () => {
 });
 
 describe('generateWorkout Integration Tests', () => {
-    let selectWarmupStub;
     let generateMainSetStub;
-    let selectCooldownStub;
+    let generateCooldownStub;
 
     beforeEach(() => {
-        selectWarmupStub = sinon.stub(workoutComponents, 'selectWarmup');
         generateMainSetStub = sinon.stub(workoutComponents, 'generateMainSet');
-        selectCooldownStub = sinon.stub(workoutComponents, 'selectCooldown');
+        generateCooldownStub = sinon.stub(workoutComponents, 'generateCooldown');
 
-        selectWarmupStub.returns({ desc: "Mock Warmup 400yd", dist: 400, type: "swim" });
         generateMainSetStub.returns({
             sets: ["4x100 mock set"],
             mainSetTotalDist: 400,
             targetPacePer100: 90,
             descriptiveMessage: "Mock main set generated"
         });
-        selectCooldownStub.returns({ desc: "Mock Cooldown 200yd", dist: 200, type: "swim" });
+        generateCooldownStub.returns({ desc: "Mock Cooldown 200yd", dist: 200, type: "swim" });
     });
 
     afterEach(() => {
@@ -160,9 +157,8 @@ describe('generateWorkout Integration Tests', () => {
 
         const result = generateWorkout(totalDistance, energySystem, cssTime, workoutType);
 
-        expect(selectWarmupStub.calledOnce).to.be.true;
         expect(generateMainSetStub.calledOnce).to.be.true;
-        // expect(selectCooldownStub.calledOnce).to.be.true;
+        expect(generateCooldownStub.calledOnce).to.be.true;
 
         const expectedCssSeconds = 90;
         const expectedRemainingForMainSet = totalDistance - 400; // warmup dist
@@ -202,14 +198,11 @@ describe('generateWorkout Integration Tests', () => {
         const workoutType = 'ANY_TYPE'; // Still need to pass workoutType
         const result = generateWorkout(2000, 'EN1', 'invalid:time', workoutType);
         expect(result).to.equal("Error: Invalid CSS time format. Please use MM:SS (e.g., '1:10').");
-        expect(selectWarmupStub.called).to.be.false;
         expect(generateMainSetStub.called).to.be.false;
-        expect(selectCooldownStub.called).to.be.false;
+        expect(generateCooldownStub.called).to.be.false;
     });
 
     it('should handle "No warmup" scenario', () => {
-        selectWarmupStub.returns({ desc: "No warmup bitches", dist: 0, type: "none" });
-
         const totalDistance = 1000;
         const energySystem = 'SP1';
         const cssTime = '1:15'; // 75 seconds
@@ -217,7 +210,6 @@ describe('generateWorkout Integration Tests', () => {
 
         const result = generateWorkout(totalDistance, energySystem, cssTime, workoutType);
 
-        expect(selectWarmupStub.calledOnce).to.be.true;
         expect(generateMainSetStub.calledOnce).to.be.true;
 
         const expectedCssSeconds = 75;
@@ -240,7 +232,7 @@ describe('generateWorkout Integration Tests', () => {
             expectedRemainingForMainSet,
             sinon.match.object
         )).to.be.true;
-        // expect(selectCooldownStub.calledOnce).to.be.true;
+        // expect(generateCooldownStub.calledOnce).to.be.true;
 
         expect(result).to.include("WU: No warmup bitches");
         // const expectedTotalDist = 0 + 400 + 200;
@@ -249,9 +241,8 @@ describe('generateWorkout Integration Tests', () => {
     });
 
     it('should correctly pass remaining distance to generateMainSet', () => {
-        selectWarmupStub.returns({ desc: "Specific Warmup", dist: 350, type: "swim" });
         // generateMainSetStub default return is fine for this test's focus
-        selectCooldownStub.returns({ desc: "Specific Cooldown", dist: 250, type: "swim" });
+        generateCooldownStub.returns({ desc: "Specific Cooldown", dist: 250, type: "swim" });
 
         const totalDistance = 2000;
         const energySystem = 'EN3';

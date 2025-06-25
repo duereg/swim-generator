@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
 import wc from '../lib/workoutComponents.js';
-const { selectWarmup, selectCooldown, generateMainSet } = wc;
+const { generateCooldown, generateMainSet } = wc;
 
 
 describe('Workout Components', () => {
@@ -15,47 +15,7 @@ describe('Workout Components', () => {
         randomStub.restore();
     });
 
-    describe('selectWarmup', () => {
-        const mockAvailableWarmups = [
-            { desc: "Warmup 1", dist: 400, type: "swim" },
-            { desc: "Warmup 2", dist: 300, type: "kick" },
-        ];
-        const mockNoWarmupOption = { desc: "No Warmup", dist: 0, type: "none" };
-
-        it('should select a warmup from availableWarmups if Math.random > 0.1', () => {
-            randomStub.returns(0.5);
-            const warmup = selectWarmup(mockAvailableWarmups, mockNoWarmupOption);
-            expect(mockAvailableWarmups).to.include(warmup);
-            expect(warmup).to.have.all.keys('desc', 'dist', 'type');
-        });
-
-        it('should select a specific warmup from availableWarmups based on Math.random', () => {
-            randomStub.returns(0.5);
-            const warmup = selectWarmup(mockAvailableWarmups, mockNoWarmupOption);
-            expect(warmup).to.deep.equal(mockAvailableWarmups[1]);
-        });
-
-        it('should select noWarmupOption if Math.random <= 0.1', () => {
-            randomStub.returns(0.05);
-            const warmup = selectWarmup(mockAvailableWarmups, mockNoWarmupOption);
-            expect(warmup).to.deep.equal(mockNoWarmupOption);
-            expect(warmup).to.have.all.keys('desc', 'dist', 'type');
-        });
-
-        it('should return noWarmupOption if availableWarmups is empty and Math.random > 0.1', () => {
-            randomStub.returns(0.5);
-            const warmup = selectWarmup([], mockNoWarmupOption);
-            expect(warmup).to.deep.equal(mockNoWarmupOption);
-        });
-
-        it('should return noWarmupOption if availableWarmups is null and Math.random > 0.1', () => {
-            randomStub.returns(0.5);
-            const warmup = selectWarmup(null, mockNoWarmupOption);
-            expect(warmup).to.deep.equal(mockNoWarmupOption);
-        });
-    });
-
-    describe('selectCooldown', () => {
+    describe('generateCooldown', () => {
         const mockAvailableCooldowns = [
             { desc: "Cooldown 1", dist: 200, type: "swim" },
             { desc: "Cooldown 2", dist: 150, type: "pull" },
@@ -64,18 +24,18 @@ describe('Workout Components', () => {
 
         it('should select a cooldown from availableCooldowns', () => {
             randomStub.returns(0.5);
-            const cooldown = selectCooldown(mockAvailableCooldowns);
+            const cooldown = generateCooldown(mockAvailableCooldowns);
             expect(cooldown).to.deep.equal(mockAvailableCooldowns[1]);
             expect(cooldown).to.have.all.keys('desc', 'dist', 'type');
         });
 
         it('should return null if availableCooldowns is empty', () => {
-            const cooldown = selectCooldown([]);
+            const cooldown = generateCooldown([]);
             expect(cooldown).to.be.null;
         });
 
         it('should return null if availableCooldowns is null', () => {
-            const cooldown = selectCooldown(null);
+            const cooldown = generateCooldown(null);
             expect(cooldown).to.be.null;
         });
     });
