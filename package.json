@@ -6,11 +6,12 @@
   "main": "dist/swim-generator.umd.js",
   "jsnext:main": "dist/swim-generator.es6.js",
   "scripts": {
-    "prebuild": "eslint lib test",
+    "prebuild": "npm run embed-presets && eslint lib test",
     "build": "rollup -c rollup.config.umd.js && rollup -c rollup.config.es6.js",
     "pretest": "rollup -c rollup.config.test.js",
     "test": "mocha --require source-map-support/register build/test-bundle.js",
-    "prepublish": "npm run build && npm test"
+    "prepublish": "npm run build && npm test",
+    "embed-presets": "node scripts/embed-preset-sources.mjs"
   },
   "repository": {
     "type": "git",
