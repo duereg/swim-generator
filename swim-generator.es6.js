@@ -736,6 +736,35 @@ function generateWarmup(totalDistanceYards, shortWorkoutThreshold) {
 
 // --- Helper Functions ---
 
+function applyPaceAdjustment(cssSecondsPer100, paceConfig) {
+  var randomComponent = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+  if (!paceConfig || typeof cssSecondsPer100 !== 'number') {
+    return cssSecondsPer100;
+  }
+  var offset = paceConfig.offset || 0;
+  var totalAdjustment = offset + randomComponent;
+  if (paceConfig.operator === '+') {
+    return cssSecondsPer100 + totalAdjustment;
+  }
+  if (paceConfig.operator === '-') {
+    return cssSecondsPer100 - totalAdjustment;
+  }
+  return cssSecondsPer100;
+}
+function formatPaceDescription(cssSecondsPer100, paceConfig) {
+  if (typeof cssSecondsPer100 !== 'number' || !paceConfig) {
+    return 'CSS';
+  }
+  var randomRange = paceConfig.randomRange || 0;
+  var minPace = applyPaceAdjustment(cssSecondsPer100, paceConfig, 0);
+  var maxPace = randomRange > 0 ? applyPaceAdjustment(cssSecondsPer100, paceConfig, randomRange) : minPace;
+  if (randomRange > 0 && minPace !== maxPace) {
+    var lowSeconds = Math.min(minPace, maxPace);
+    var highSeconds = Math.max(minPace, maxPace);
+    return "".concat(formatSecondsToMmSs(lowSeconds), "-").concat(formatSecondsToMmSs(highSeconds));
+  }
+  return formatSecondsToMmSs(minPace);
+}
 function calculateTargetPace(cssSecondsPer100, paceConfig) {
   if (!paceConfig || typeof cssSecondsPer100 !== 'number') {
     return cssSecondsPer100;
@@ -799,10 +828,11 @@ function generateMainSetFromConfig(energySystem, cssSecondsPer100, remainingDist
   }
   targetPacePer100 = calculateTargetPace(cssSecondsPer100, strategyConfig.paceConfig);
   var strategyResult = generateSet(strategyConfig, remainingDistanceForMainSet);
-  var paceDescription = generatePaceSummary(strategyConfig);
+  var paceDescription = formatPaceDescription(cssSecondsPer100, strategyConfig.paceConfig);
   if (strategyResult && strategyResult.generatedSets && strategyResult.generatedSets.length > 0 && strategyResult.totalDistance > 0) {
     mainSetTotalDist = strategyResult.totalDistance;
     strategyResult.generatedSets.forEach(function (item) {
+      item.paceDesc = paceDescription;
       sets.push(formatSetString(item, energySystem, strategyConfig.setFormatting));
     });
     descriptiveMessage = formatDescriptiveMessage(strategyConfig.descriptiveMessages.success, {
@@ -828,29 +858,6 @@ function generateMainSetFromConfig(energySystem, cssSecondsPer100, remainingDist
     targetPacePer100: targetPacePer100,
     descriptiveMessage: descriptiveMessage
   };
-}
-function generatePaceSummary(strategyConfig) {
-  var paceSummaryText = "CSS";
-  if (strategyConfig && strategyConfig.paceConfig) {
-    var pc = strategyConfig.paceConfig;
-    if (pc.offset === 0 && !pc.randomRange) ; else if (pc.operator && (pc.offset || pc.randomRange)) {
-      var basePaceDesc = "CSS ";
-      var offsetPart = "";
-      if (pc.offset) {
-        offsetPart = "".concat(pc.operator).concat(pc.offset);
-      }
-      if (pc.randomRange) {
-        var rangeEnd = pc.offset + pc.randomRange;
-        if (pc.offset && Math.abs(rangeEnd) !== Math.abs(pc.offset)) {
-          offsetPart += "-".concat(Math.abs(rangeEnd));
-        } else if (!pc.offset) {
-          offsetPart = "".concat(pc.operator, "0-").concat(Math.abs(pc.randomRange));
-        }
-      }
-      paceSummaryText = basePaceDesc + offsetPart + "s/100m";
-    }
-  }
-  return paceSummaryText;
 }
 function generateSet(strategyConfig, setDistance) {
   var remainingDistance = setDistance;
@@ -971,7 +978,7 @@ var ENDURANCE_BASE_CONFIG = {
     defaultActivity: "swim/kick"
   },
   descriptiveMessages: {
-    success: "EN1: {setSummary} ({energySystem}), CSS +5-15s/100m pace guide, 60\" rest.",
+    success: "EN1: {setSummary} ({energySystem}), {paceDescription} pace guide, 60\" rest.",
     tooShort: "EN1: Too short. Min rep distance {minRepDistForType}, available: {remainingDistance}.",
     fail: "EN1: Could not fit EN1 reps for {energySystem}. Available: {remainingDistance}."
   }
@@ -1124,7 +1131,7 @@ var SPEED_ENDURANCE_CONFIG = {
     baseStructure: "{reps}x{dist} {activity} ({energySystem} focus) {rest}"
   },
   descriptiveMessages: {
-    success: "SP1: Lactate Tolerance ({energySystem}), CSS -3-5s. Total ~{totalDistance}yds.",
+    success: "SP1: Lactate Tolerance ({energySystem}), {paceDescription}. Total ~{totalDistance}yds.",
     tooShort: "SP1: Too short. Min rep 25. Available: {remainingDistance}.",
     fail: "SP1: Could not fit SP1 set. Available: {remainingDistance} (target yardage for SP1 is typically 400-800)."
   }
@@ -1243,7 +1250,7 @@ var THRESHOLD_SUSTAINED_CONFIG = {
     defaultActivity: "swim"
   },
   descriptiveMessages: {
-    success: "EN2: {setSummary} ({energySystem}) @ CSS.",
+    success: "EN2: {setSummary} ({energySystem}) @ {paceDescription}.",
     tooShort: "EN2: Too short for EN2 sets. Available: {remainingDistance}.",
     fail: "EN2: Could not fit standard EN2 set for {energySystem}. Available: {remainingDistance}."
   }
