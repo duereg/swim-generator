@@ -738,6 +738,28 @@
     return selectedWarmup;
   }
 
+  function parseCssTimeToSeconds(cssTimeStr) {
+    if (typeof cssTimeStr !== 'string') {
+      return null;
+    }
+    var parts = cssTimeStr.split(':');
+    if (parts.length === 2) {
+      var minutes = parseInt(parts[0], 10);
+      var seconds = parseFloat(parts[1]);
+      if (isNaN(minutes) || isNaN(seconds)) {
+        return null;
+      }
+      return minutes * 60 + seconds;
+    }
+    return null;
+  }
+  function formatSecondsToMmSs(totalSeconds) {
+    var rounded = Math.ceil(totalSeconds);
+    var minutes = Math.floor(rounded / 60);
+    var seconds = rounded % 60;
+    return "".concat(minutes, ":").concat(seconds.toString().padStart(2, '0'));
+  }
+
   // --- Helper Functions ---
 
   function applyPaceAdjustment(cssSecondsPer100, paceConfig) {
@@ -1415,31 +1437,6 @@
 
   var VERY_SHORT_WORKOUT_THRESHOLD = 600; // yards
   var MAIN_SET_UNITS = "yards"; // Assuming SCY based on sources unless specified otherwise
-
-  // Helper function to convert MM:SS time string to total seconds per 100 units
-  function parseCssTimeToSeconds(cssTimeStr) {
-    if (typeof cssTimeStr !== 'string') {
-      return null;
-    }
-    var parts = cssTimeStr.split(':');
-    if (parts.length === 2) {
-      var minutes = parseInt(parts[0], 10);
-      var seconds = parseFloat(parts[1]);
-      if (isNaN(minutes) || isNaN(seconds)) {
-        return null;
-      }
-      return minutes * 60 + seconds;
-    }
-    return null; // Invalid format
-  }
-
-  // Helper function to format total seconds per 100 units back to MM:SS (whole seconds, rounded up)
-  function formatSecondsToMmSs(totalSeconds) {
-    var rounded = Math.ceil(totalSeconds);
-    var minutes = Math.floor(rounded / 60);
-    var seconds = rounded % 60;
-    return "".concat(minutes, ":").concat(seconds.toString().padStart(2, '0'));
-  }
 
   /**
    * Generates a random workout based on distance, energy system, and CSS time.
