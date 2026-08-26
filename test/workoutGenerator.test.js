@@ -175,6 +175,30 @@ describe('lib/workoutGenerator.js', () => {
         });
     });
 
+    describe('formatPaceDescription', () => {
+        const css = 80; // 1:20 per 100
+
+        it('should return CSS when css seconds are missing', () => {
+            expect(wg.formatPaceDescription(null, { operator: '+', offset: 5 })).to.equal('CSS');
+        });
+
+        it('should format EN2 at CSS with no adjustment', () => {
+            expect(wg.formatPaceDescription(css, { operator: '+', offset: 0 })).to.equal('1:20');
+        });
+
+        it('should format EN3 as a faster-than-CSS range', () => {
+            expect(wg.formatPaceDescription(css, { operator: '-', offset: 1, randomRange: 1 })).to.equal('1:18-1:19');
+        });
+
+        it('should format EN1 as a slower-than-CSS range', () => {
+            expect(wg.formatPaceDescription(css, { operator: '+', offset: 5, randomRange: 10 })).to.equal('1:25-1:35');
+        });
+
+        it('should format SP1 as a faster-than-CSS range', () => {
+            expect(wg.formatPaceDescription(css, { operator: '-', offset: 3, randomRange: 2 })).to.equal('1:15-1:17');
+        });
+    });
+
     describe('generateSet', () => {
         const mockStrategyConfig = {
             setDefinitions: [

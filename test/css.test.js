@@ -38,6 +38,20 @@ describe('CSS Helper Functions', () => {
             expect(formatSecondsToMmSs(78.2)).to.equal('1:19');
         });
     });
+
+    describe('generateWorkout pace display', () => {
+        it('should show actual CSS pace times instead of CSS placeholders for EN2', () => {
+            const result = generateWorkout(4000, 'EN2', '1:20');
+            expect(result).to.include('@ 1:20');
+            expect(result).to.not.match(/@ CSS/);
+        });
+
+        it('should show a pace range for EN3', () => {
+            const result = generateWorkout(3000, 'EN3', '1:20');
+            expect(result).to.match(/@ 1:18-1:19/);
+            expect(result).to.not.match(/CSS -/);
+        });
+    });
 });
 
 // Helper function to extract distance (should be placed at an appropriate scope, e.g., top-level in the file or within the new describe block if not already present)

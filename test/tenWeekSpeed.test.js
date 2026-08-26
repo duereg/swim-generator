@@ -72,6 +72,8 @@ describe('TEN_WEEK_SPEED preset', () => {
     expect(result).to.include('Workout Type: THRESHOLD_SUSTAINED');
     expect(result).to.not.match(/Workout Type: undefined/);
     expect(result).to.not.match(/Estimated AVG pace for main set: \d+:\d+\.\d/);
+    expect(result).to.not.match(/@ CSS/);
+    expect(result).to.match(/@ 1:20/);
     expect(result).to.not.match(/Error:/);
   });
 
