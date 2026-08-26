@@ -93,7 +93,7 @@ describe('presetWorkoutParser', () => {
 
 describe('presetWorkouts API', () => {
   it('should list all preset plans', () => {
-    expect(listPresetPlans()).to.have.length(5);
+    expect(listPresetPlans()).to.have.length(4);
   });
 
   it('should generate full 9-week plan with week/swim headers', () => {
@@ -105,10 +105,10 @@ describe('presetWorkouts API', () => {
     expect(result).to.not.match(/Error:/);
   });
 
-  it('should generate full 23-workout library with CSS-adjusted intervals', () => {
-    const result = generatePresetPlan('LIBRARY_23', '1:20');
+  it('should generate full 24-workout library with CSS-adjusted intervals', () => {
+    const result = generatePresetPlan('LIBRARY_24', '1:20');
     expect(result).to.include('Workout 1b');
-    expect(result).to.include('Workout 23b');
+    expect(result).to.include('Workout 24b');
     expect(result).to.include('@ 3:30');
     expect(result).to.include('< 2:34');
     expect(result).to.not.match(/<\s*[\d:]+\.\d/);
@@ -116,7 +116,7 @@ describe('presetWorkouts API', () => {
   });
 
   it('should return error for invalid CSS', () => {
-    const result = generatePresetPlan('LIBRARY_23', 'invalid');
+    const result = generatePresetPlan('LIBRARY_24', 'invalid');
     expect(result).to.match(/Error: Invalid CSS/);
   });
 });

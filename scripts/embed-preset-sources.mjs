@@ -9,7 +9,6 @@ const outFile = path.join(__dirname, '../lib/data/presetSources.js');
 const files = {
   FOUR_WEEK: '4-week.txt',
   NINE_WEEK: '9-week.txt',
-  LIBRARY_23: '23-swim-workouts.txt',
   LIBRARY_24: '24-swim-workouts.txt',
   TEN_WEEK_SPEED: '10-week-speed.txt',
 };

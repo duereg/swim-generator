@@ -56,7 +56,7 @@ describe('tenWeekSpeedParser', () => {
 describe('TEN_WEEK_SPEED preset', () => {
   it('should list the 10-week speed plan', () => {
     const plans = listPresetPlans();
-    expect(plans).to.have.length(5);
+    expect(plans).to.have.length(4);
     expect(plans.find((plan) => plan.id === 'TEN_WEEK_SPEED')).to.deep.include({
       name: '10-Week Speed Development',
     });
