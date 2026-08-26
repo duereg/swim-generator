@@ -1,0 +1,337 @@
+10 weeks program for speed development
+
+
+
+Week 1 :
+
+
+
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Swim 1
+4000 EN1
+4700 EN2
+4500 EN1
+4300 EN2
+4200 EN1
+Swim 2
+2000 EN3
+
+3000 SP1
+
+2200 EN2
+
+Swimming :
+EN1 : Basic endurance training 65-75% MHR
+EN2 : Threshold endurance training 75-80% MHR
+EN3 : Overload endurance training 80-85% MHR
+SP1 : Lactate tolerance training 85-90% MHR
+SP2 : Lactate production training + 90% MHR
+
+
+
+
+
+Week 2 :
+
+
+
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Swim 1
+4000 EN1
+4700 EN2
+4500 EN1
+4300 EN2
+4200 EN1
+Swim 2
+2000 EN3
+
+3000 SP1
+
+2200 EN2
+
+Swimming :
+EN1 : Basic endurance training
+EN2 : Threshold endurance training
+EN3 : Overload endurance training
+SP1 : Lactate tolerance training
+SP2 : Lactate production training
+
+
+
+
+
+
+Week 3 :
+
+
+
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Swim 1
+3600 EN2
+4000 EN3
+4200 SP1
+3600 EN2
+4000 SP1
+Swim 2
+3200 EN3
+
+2200 SP1
+
+2200 SP2
+
+Swimming :
+EN1 : Basic endurance training
+EN2 : Threshold endurance training
+EN3 : Overload endurance training
+SP1 : Lactate tolerance training
+SP2 : Lactate production training
+
+
+
+
+Week 4 :
+
+
+
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Swim 1
+3600 EN2
+4000 EN3
+4200 SP1
+3600 EN2
+4000 SP1
+Swim 2
+3200 EN3
+
+2200 SP1
+
+2200 SP2
+
+Swimming :
+EN1 : Basic endurance training
+EN2 : Threshold endurance training
+EN3 : Overload endurance training
+SP1 : Lactate tolerance training
+SP2 : Lactate production training
+
+
+
+
+
+
+
+
+Week 5 :
+
+
+
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Swim 1
+3600 EN2
+4000 EN3
+4200 SP1
+3600 EN2
+4000 SP1
+Swim 2
+3200 EN3
+
+2200 SP1
+
+2200 SP2
+
+Swimming :
+EN1 : Basic endurance training
+EN2 : Threshold endurance training
+EN3 : Overload endurance training
+SP1 : Lactate tolerance training
+SP2 : Lactate production training
+
+
+
+Week 6 :
+
+
+
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Swim 1
+4000 EN2
+3400 EN3
+3800 SP1
+4000 EN3
+3800 SP1
+
+
+Swimming :
+EN1 : Basic endurance training
+EN2 : Threshold endurance training
+EN3 : Overload endurance training
+SP1 : Lactate tolerance training
+SP2 : Lactate production training
+
+
+
+
+
+
+
+
+
+
+
+
+
+Week 7:
+
+
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Swim 1
+4000 EN2
+3600 EN3
+3800 SP2
+4000 EN3
+3800 SP1
+
+
+Swimming :
+EN1 : Basic endurance training
+EN2 : Threshold endurance training
+EN3 : Overload endurance training
+SP1 : Lactate tolerance training
+SP2 : Lactate production training
+
+
+Week 8:
+
+
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Swim 1
+3600 EN3
+3500 SP1
+3200 SP2
+3800 EN3
+3400 SP2
+
+
+Swimming :
+EN1 : Basic endurance training
+EN2 : Threshold endurance training
+EN3 : Overload endurance training
+SP1 : Lactate tolerance training
+SP2 : Lactate production training
+
+
+Week 9:
+
+
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Swim 1
+3600 EN3
+3500 SP1
+3200 SP2
+3800 EN3
+3400 SP2
+
+
+Swimming :
+EN1 : Basic endurance training
+EN2 : Threshold endurance training
+EN3 : Overload endurance training
+SP1 : Lactate tolerance training
+SP2 : Lactate production training
+
+
+Week 10:
+
+
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Swim 1
+3000 EN2
+3000 EN3
+REST
+REST
+REST
+
+Swimming :
+EN1 : Basic endurance training
+EN2 : Threshold endurance training
+EN3 : Overload endurance training
+SP1 : Lactate tolerance training
+SP2 : Lactate production training
+
+
+Description:
+
+
+EN1: Basic endurance training.
+Long swim sets, not too hard on the speed. Think about technique. Different strokes.
+8X500 with 60”R 
+
+EN2: Threshold endurance training.
+Calculate CSS (critical swim speed).
+Sets like:
+10X200 with 20”r at CSS
+5X400 with 40”r at CSS
+18X100 with 10”r at CSS
+3X600 with 60”r at CSS
+
+EN3: Overload endurance training.
+1” to 2” faster than CSS.
+4X500 with 60”r
+4X400 with 45”r
+
+SP1: Lactate tolerance training.
+3” to 5” faster than CSS.
+Set distances between 25 to 100yd with 15” to 2’ r between sets
+Set distances between 100 to 200yd with 3’ to 10’ r between sets
+Sets of 400 to 800yd.
+
+SP2: Lactate production training.
+Speed: Near max.
+Set distances between 25 to 50yd with 1’ to 3’ for 25yds set and 3’ to 5’ for 50yds set.
+Set length: 300 to 600yds
+
+
+CSS test: 
+http://www.swimsmooth.com/training.html
+
+

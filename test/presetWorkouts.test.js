@@ -93,7 +93,7 @@ describe('presetWorkoutParser', () => {
 
 describe('presetWorkouts API', () => {
   it('should list all preset plans', () => {
-    expect(listPresetPlans()).to.have.length(4);
+    expect(listPresetPlans()).to.have.length(5);
   });
 
   it('should generate full 9-week plan with week/swim headers', () => {

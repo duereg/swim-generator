@@ -25,14 +25,17 @@ describe('CSS Helper Functions', () => {
 
     describe('formatSecondsToMmSs', () => {
         it('should correctly format seconds to MM:SS string', () => {
-            expect(formatSecondsToMmSs(70)).to.equal('1:10.0');
-            // ... (other assertions remain the same)
-            expect(formatSecondsToMmSs(3599.9)).to.equal('59:59.9');
+            expect(formatSecondsToMmSs(70)).to.equal('1:10');
+            expect(formatSecondsToMmSs(3599.9)).to.equal('60:00');
         });
 
         it('should handle single digit seconds correctly with leading zero', () => {
-            expect(formatSecondsToMmSs(61.0)).to.equal('1:01.0');
-            expect(formatSecondsToMmSs(8.5)).to.equal('0:08.5');
+            expect(formatSecondsToMmSs(61.0)).to.equal('1:01');
+            expect(formatSecondsToMmSs(8.5)).to.equal('0:09');
+        });
+
+        it('should round up fractional seconds', () => {
+            expect(formatSecondsToMmSs(78.2)).to.equal('1:19');
         });
     });
 });
