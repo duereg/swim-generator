@@ -22,11 +22,12 @@
           <label for="workoutTypeSelect">Workout Type</label>
           <select id="workoutTypeSelect">
             <option value="MIXED_UNDERWATERS" selected>Mixed Underwaters</option>
+            <option value="PRESET_PLAN">Preset Plan</option>
             <option value="EN1">(EN1) Endurance Base</option>
             <option value="EN2">(EN2) Threshold Sustained</option>
             <option value="EN3">(EN3) Threshold Development</option>
             <option value="SP1">(SP1) Speed Endurance</option>
-            <option value="SP2">(SP2) Max Sprint</option> 
+            <option value="SP2">(SP2) Max Sprint</option>
           </select>
         </div>
         <div class='swim-generator--time-input swim-generator--input-group'>
@@ -41,6 +42,22 @@
           <div>
             <input id="cssInput" type="text" value="1:20" />
             <span>CSS Time (MM:SS)</span>
+          </div>
+        </div>
+        <div id="presetInputsContainer" style="display: none;" class="swim-generator--input-group">
+          <div>
+            <select id="presetPlanSelect"></select>
+            <span>Preset Plan</span>
+          </div>
+          <div>
+            <input id="presetCssInput" type="text" value="1:20" />
+            <span>CSS Time (MM:SS)</span>
+          </div>
+          <div>
+            <label>
+              <input id="presetIncludeExtras" type="checkbox" />
+              Include optional extras
+            </label>
           </div>
         </div>
         <div class='swim-generator--controls'>
@@ -58,19 +75,31 @@
       var workoutTypeSelect = document.getElementById("workoutTypeSelect");
       var timeInputContainer = document.querySelector(".swim-generator--time-input");
       var cssInputsContainer = document.getElementById("cssInputsContainer");
+      var presetInputsContainer = document.getElementById("presetInputsContainer");
+      var presetPlanSelect = document.getElementById("presetPlanSelect");
+
+      function populatePresetPlans() {
+        if (!swimGenerator.listPresetPlans) return;
+        presetPlanSelect.innerHTML = "";
+        swimGenerator.listPresetPlans().forEach(function(plan) {
+          var option = document.createElement("option");
+          option.value = plan.id;
+          option.textContent = plan.name;
+          presetPlanSelect.appendChild(option);
+        });
+      }
 
       function handleWorkoutTypeChange() {
-        if (workoutTypeSelect.value === "MIXED_UNDERWATERS") {
-          timeInputContainer.style.display = "";
-          cssInputsContainer.style.display = "none";
-        } else {
-          timeInputContainer.style.display = "none";
-          cssInputsContainer.style.display = "";
+        var mode = workoutTypeSelect.value;
+        timeInputContainer.style.display = mode === "MIXED_UNDERWATERS" ? "" : "none";
+        cssInputsContainer.style.display = (mode !== "MIXED_UNDERWATERS" && mode !== "PRESET_PLAN") ? "" : "none";
+        presetInputsContainer.style.display = mode === "PRESET_PLAN" ? "" : "none";
+        if (mode === "PRESET_PLAN") {
+          populatePresetPlans();
         }
       }
 
       workoutTypeSelect.addEventListener("change", handleWorkoutTypeChange);
-      // Initial call to set visibility based on default
       handleWorkoutTypeChange();
 
       function formatTime(sec_num) {
@@ -82,11 +111,18 @@
           .join(':');
       }
 
+      function renderTextWorkout(text) {
+        var workoutDiv = document.getElementById("workout");
+        var pre = document.createElement("pre");
+        pre.textContent = text;
+        workoutDiv.appendChild(pre);
+      }
+
       function generate() {
         var selectedWorkoutType = workoutTypeSelect.value;
         var timeDiv = document.getElementById("time");
         var workoutDiv = document.getElementById("workout");
-        workoutDiv.innerHTML = ""; // Clear previous workout
+        workoutDiv.innerHTML = "";
 
         if (selectedWorkoutType === "MIXED_UNDERWATERS") {
           var timeInSeconds = document.getElementById("timeInput").value * 60;
@@ -94,22 +130,25 @@
 
           timeDiv.innerHTML = "Total Time: " + formatTime(workout.seconds);
           var workoutMarkup = _.map(workout.intervals, compiledTemplate).join(' ');
-          console.log(workoutMarkup);
           workoutDiv.innerHTML = workoutMarkup;
+        } else if (selectedWorkoutType === "PRESET_PLAN") {
+          var cssTime = document.getElementById("presetCssInput").value;
+          var planId = presetPlanSelect.value;
+          var includeExtras = document.getElementById("presetIncludeExtras").checked;
+          var result = swimGenerator.generatePresetPlan(planId, cssTime, { includeExtras: includeExtras });
+
+          renderTextWorkout(result);
+          timeDiv.innerHTML = "";
         } else {
           var distance = parseInt(document.getElementById("distanceInput").value, 10);
           var cssTime = document.getElementById("cssInput").value;
           var workoutTypeOptionText = workoutTypeSelect.options[workoutTypeSelect.selectedIndex].text;
-          var workoutType = workoutTypeOptionText.split(' ')[0]; // E.g., "ENDURANCE_BASE"
-          var energySystem = selectedWorkoutType; // E.g., "EN1"
+          var workoutType = workoutTypeOptionText.split(' ')[0];
+          var energySystem = selectedWorkoutType;
 
-          // Assuming swimGenerator.generateCssWorkout will be available
           if (swimGenerator.generateCssWorkout) {
-            var workoutDetailsString = swimGenerator.generateCssWorkout(distance, energySystem, cssTime, workoutType);
-            var pre = document.createElement("pre");
-            pre.textContent = workoutDetailsString;
-            workoutDiv.appendChild(pre);
-            timeDiv.innerHTML = ""; // Clear time display for CSS workouts
+            renderTextWorkout(swimGenerator.generateCssWorkout(distance, energySystem, cssTime, workoutType));
+            timeDiv.innerHTML = "";
           } else {
             workoutDiv.innerHTML = "CSS workout generator function not available yet.";
             timeDiv.innerHTML = "";
